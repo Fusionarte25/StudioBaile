@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 43 50% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 43 20% 96%;
+    --secondary-foreground: 43 50% 15%;
+    --muted: 43 10% 96%;
+    --muted-foreground: 20 10% 45%;
+    --accent: 43 60% 92%;
+    --accent-foreground: 43 50% 15%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 43 20% 90%;
+    --input: 43 20% 90%;
+    --ring: 43 50% 50%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 60 9.1% 97.8%;
+    --card: 20 14.3% 4.1%;
+    --card-foreground: 60 9.1% 97.8%;
+    --popover: 20 14.3% 4.1%;
+    --popover-foreground: 60 9.1% 97.8%;
+    --primary: 43 50% 60%;
+    --primary-foreground: 20 14.3% 4.1%;
+    --secondary: 12 6.5% 15.1%;
+    --secondary-foreground: 60 9.1% 97.8%;
+    --muted: 12 6.5% 15.1%;
+    --muted-foreground: 24 5.4% 63.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 60 9.1% 97.8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 12 6.5% 15.1%;
+    --input: 12 6.5% 15.1%;
+    --ring: 43 50% 60%;
+  }
+}
+
+@layer utilities {
+  .bg-gold-gradient {
+    background: linear-gradient(135deg, #d4af37 0%, #f9e29c 50%, #b8860b 100%);
+  }
+
+  .text-gold {
+    color: #c5a021;
+  }
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  .day_modifier_priority_high {
+    @apply relative;
+  }
+
+  .day_modifier_priority_high>.rdp-day_button:after {
+    @apply content-[''] absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-500;
+  }
+
+  .day_modifier_priority_medium {
+    @apply relative;
+  }
+
+  .day_modifier_priority_medium>.rdp-day_button:after {
+    @apply content-[''] absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-yellow-500;
+  }
+
+  .day_modifier_priority_low {
+    @apply relative;
+  }
+
+  .day_modifier_priority_low>.rdp-day_button:after {
+    @apply content-[''] absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-blue-500;
+  }
+}
+
+@layer utilities {
+  .btn-gold-glow {
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+  }
+
+  .btn-gold-glow:hover {
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  main {
+    padding: 0;
+    margin: 0;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #e2e8f0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+
+  thead {
+    background-color: #f2f2f2;
+  }
+}

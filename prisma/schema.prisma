@@ -1,0 +1,229 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int                @id @default(autoincrement())
+  email             String             @unique
+  name              String
+  password          String
+  role              String             @default("Estudiante")
+  joined            DateTime           @default(now())
+  avatar            String
+  dob               String?
+  mobile            String?
+  isVisibleToStudents Boolean?           @default(false)
+  isPartner         Boolean?           @default(false)
+  bio               String?
+  specialties       String             @default("[]")
+  paymentDetailsJson String?
+
+  taughtClasses     DanceClass[]       @relation("ClassTeachers")
+  enrolledClasses   DanceClass[]       @relation("EnrolledStudents")
+  memberships       StudentMembership[]
+  payments          StudentPayment[]
+  assignedTasks     TaskNote[]         @relation("TaskAssignees")
+  attendanceHistory AttendanceRecord[]
+}
+
+model DanceClass {
+  id                      String   @id @default(cuid())
+  name                    String
+  type                    String // recurring, one-time, workshop, rental
+  day                     String? // Lunes, Martes...
+  date                    String? // YYYY-MM-DD
+  time                    String // HH:MM
+  room                    String
+  duration                String
+  capacity                Int
+  cancellationPolicyHours Int?
+  
+  status                  String  @default("scheduled") // scheduled, completed, cancelled-low-attendance, cancelled-teacher
+  isCancelledAndHidden    Boolean? @default(false)
+  isVisibleToStudents     Boolean? @default(false)
+
+  // Rental specific
+  rentalContact           String?
+  rentalPrice             Float?
+
+  // Workshop specific
+  workshopPaymentType     String? // fixed, percentage
+  workshopPaymentValue    Float?
+
+  style                   DanceStyle @relation(fields: [styleId], references: [id])
+  styleId                 String
+  level                   DanceLevel @relation(fields: [levelId], references: [id])
+  levelId                 String
+  
+  teachers                User[]     @relation("ClassTeachers")
+  enrolledStudents        User[]     @relation("EnrolledStudents")
+  attendance              AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id        Int      @id @default(autoincrement())
+  classId   String
+  danceClass DanceClass @relation(fields: [classId], references: [id])
+  studentId Int
+  student   User     @relation(fields: [studentId], references: [id])
+  date      String // YYYY-MM-DD
+  status    String // presente, ausente
+
+  @@unique([classId, studentId, date])
+}
+
+model StudentMembership {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  plan      MembershipPlan @relation(fields: [planId], references: [id])
+  planId    String
+  startDate String
+  endDate   String
+  classesRemaining Int?
+}
+
+model StudentPayment {
+  id              String   @id @default(cuid())
+  student         User     @relation(fields: [studentId], references: [id])
+  studentId       Int
+  plan            MembershipPlan @relation(fields: [planId], references: [id])
+  planId          String
+  invoiceDate     String
+  totalAmount     Float
+  status          String // paid, pending, deposit
+  amountPaid      Float
+  amountDue       Float
+  notes           String?
+  lastUpdatedBy   String?
+  lastUpdatedDate String?
+}
+
+model MembershipPlan {
+  id                String   @id @default(cuid())
+  title             String
+  description       String
+  accessType        String   // time_pass, class_pack, custom_pack
+  
+  price             Float?   // For time_pass and class_pack
+  classCount        Int?     // For class_pack
+  priceTiers        String?    // For custom_pack (e.g., [{ "classCount": 5, "price": 50 }])
+  
+  validityType      String   // relative, monthly, fixed
+  durationValue     Int?
+  durationUnit      String?  // days, weeks, months
+  validityMonths    Int?     // For monthly type
+  monthlyStartType  String?  // from_purchase, next_month
+  startDate         String?  // For fixed type
+  endDate           String?  // For fixed type
+
+  features          String             @default("[]")
+  isPopular         Boolean?
+  visibility        String
+  allowedClasses    String             @default("[]")
+
+  studentMemberships StudentMembership[]
+  studentPayments    StudentPayment[]
+  coupons            Coupon[]
+}
+
+
+model Coupon {
+  id                 String   @id @default(cuid())
+  code               String   @unique
+  discountType       String   // 'percentage' or 'fixed'
+  discountValue      Float
+  expirationDate     DateTime?
+  usageLimit         Int?
+  status             String   // 'active' or 'inactive'
+  
+  applicableTo       String   // 'all_memberships', 'specific_memberships', 'all_classes', 'specific_classes'
+  specificPlanIds    String            @default("[]")
+  specificClassIds   String            @default("[]")
+
+  applicablePlans    MembershipPlan[]
+}
+
+
+model DanceStyle {
+  id          String       @id @default(cuid())
+  name        String
+  description String
+  classes     DanceClass[]
+}
+
+model DanceLevel {
+  id          String       @id @default(cuid())
+  name        String
+  description String
+  classes     DanceClass[]
+}
+
+model Role {
+  id          String @id
+  name        String @unique
+  permissions String @default("[]")
+}
+
+model Transaction {
+  id          String @id @default(cuid())
+  type        String // ingreso, egreso
+  category    String
+  description String
+  amount      Float
+  date        String
+  receiptUrl  String?
+}
+
+model TaskNote {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  status         String    // todo, in_progress, done
+  category       String
+  priority       String?   // low, medium, high
+  assignees      User[]    @relation("TaskAssignees")
+  createdAt      DateTime  @default(now())
+  dueDate        DateTime?
+  alertDateTime  DateTime?
+  alertDismissed Boolean?
+}
+
+model Settings {
+  id                       String @id @default("singleton")
+  academyName              String
+  contactEmail             String
+  phone                    String?
+  whatsappPhone            String?
+  address                  String?
+  welcomeMessage           String?
+  enableNewSignups         Boolean
+  maintenanceMode          Boolean
+  logoUrl                  String?
+  faviconUrl               String?
+  instagramUrl             String?
+  facebookUrl              String?
+  tiktokUrl                String?
+  openingHours             String?
+  registrationEmailMessage String?
+  membershipEmailMessage   String?
+
+  heroSlides               String @default("[]")
+  scheduleImages           String @default("[]")
+
+  aboutUsTitle             String?
+  aboutUsStory             String?
+  aboutUsMission           String?
+  aboutUsVision            String?
+  aboutUsValues            String?
+  aboutUsTeamTitle         String?
+  aboutUsTeamDescription   String?
+}
