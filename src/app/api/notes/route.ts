@@ -34,30 +34,30 @@ const taskNoteCreateSchema = z.object({
 });
 
 export async function POST(request: Request) {
-    try {
-        const json = await request.json();
-        const data = taskNoteCreateSchema.parse(json);
+  try {
+    const json = await request.json();
+    const data = taskNoteCreateSchema.parse(json);
 
-        const newTask = await prisma.taskNote.create({
-            data: {
-                title: data.title,
-                description: data.description,
-                status: data.status,
-                priority: data.priority,
-                category: data.category,
-                dueDate: data.dueDate,
-                alertDateTime: data.alertDateTime,
-                assignees: {
-                    connect: data.assigneeIds.map((id: number) => ({ id })),
-                },
-            },
-        });
-        return NextResponse.json(newTask, { status: 201 });
-    } catch (error) {
-        if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
-        }
-        console.error('Error creating task:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const newTask = await prisma.taskNote.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        priority: data.priority,
+        category: data.category,
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        alertDateTime: data.alertDateTime ? new Date(data.alertDateTime) : null,
+        assignees: {
+          connect: data.assigneeIds.map((id: number) => ({ id })),
+        },
+      },
+    });
+    return NextResponse.json(newTask, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
     }
+    console.error('Error creating task:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
