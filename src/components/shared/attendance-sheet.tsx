@@ -160,7 +160,11 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
                   const p = student.plan;
                   const isExpirado = m ? isBefore(parseISO(m.endDate), parseISO(date)) : true;
                   const hasClasses = p?.accessType === 'class_pack' ? (m?.classesRemaining ?? 0) > 0 : true;
-                  const isAlDía = m && !isExpirado && hasClasses;
+
+                  // Check if this specific class is allowed by the plan
+                  const isClassAllowed = !p?.allowedClasses || p.allowedClasses.length === 0 || p.allowedClasses.includes(classId);
+
+                  const isAlDía = m && !isExpirado && hasClasses && isClassAllowed;
 
                   return (
                     <TableRow key={student.id}>
@@ -174,14 +178,14 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
                       <TableCell className="font-medium">
                         {student.name}
                         <div className="md:hidden text-xs text-muted-foreground">
-                          {isAlDía ? '✅ Al día' : '❌ Problema con plan'}
+                          {isAlDía ? '✅ Al día' : '❌ Problema'}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {m ? (
                           <div className="flex flex-col gap-1">
                             <Badge variant={isAlDía ? 'secondary' : 'destructive'} className="w-fit text-[10px] px-1 h-5">
-                              {isExpirado ? 'Expirado' : !hasClasses ? 'Sin clases' : 'Activo'}
+                              {isExpirado ? 'Expirado' : !hasClasses ? 'Sin clases' : !isClassAllowed ? 'Clase no permitida' : 'Activo'}
                             </Badge>
                             <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
                               {p?.title} {p?.accessType === 'class_pack' && `(${m.classesRemaining}/${p.classCount})`}

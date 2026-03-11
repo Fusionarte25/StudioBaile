@@ -59,7 +59,14 @@ export async function POST(request: NextRequest) {
     const plan = membershipPlanZodSchema.parse(planToValidate);
 
     // --- FIN DEL BLINDAJE ---
-    const regFee = plan.registrationFee || 0;
+    const currentYear = new Date().getFullYear();
+    let regFee = plan.registrationFee || 0;
+
+    // Check if user already paid registration for this year
+    if (user.registrationPaidYear === currentYear) {
+      regFee = 0;
+    }
+
     // Use the fetched data from here on, not the client data.
     const basePrice = totalPrice ?? (plan.price ? plan.price : 0);
     const finalPrice = basePrice + regFee;
@@ -115,6 +122,14 @@ export async function POST(request: NextRequest) {
           classesRemaining: classesRemaining,
         },
       });
+
+      // 3. If registration fee was paid, update the user's record
+      if (regFee > 0) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { registrationPaidYear: currentYear }
+        });
+      }
     });
 
     return NextResponse.json({ success: true, message: 'Compra realizada con éxito' });

@@ -25,6 +25,7 @@ model User {
   bio               String?
   specialties       String             @default("[]")
   paymentDetailsJson String?
+  registrationPaidYear Int?
 
   taughtClasses     DanceClass[]       @relation("ClassTeachers")
   enrolledClasses   DanceClass[]       @relation("EnrolledStudents")
