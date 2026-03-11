@@ -38,6 +38,7 @@ model User {
 model DanceClass {
   id                      String   @id @default(cuid())
   name                    String
+  description             String?
   type                    String // recurring, one-time, workshop, rental
   day                     String? // Lunes, Martes...
   date                    String? // YYYY-MM-DD
@@ -90,6 +91,7 @@ model StudentMembership {
   startDate String
   endDate   String
   classesRemaining Int?
+  selectedClassIds String? @default("[]") // Store JSON list of selected course IDs
 }
 
 model StudentPayment {
@@ -127,12 +129,17 @@ model MembershipPlan {
   endDate           String?  // For fixed type
 
   features          String             @default("[]")
-  isPopular         Boolean?
-  visibility        String
+  isPopular         Boolean            @default(false)
+  visibility        String             @default("public")
   allowedClasses    String             @default("[]")
   registrationFee   Float?             @default(0)
+  
+  // NEW: Support for limited courses and target month
+  isUnlimitedCourses Boolean           @default(false)
+  maxCourses        Int?               // e.g., 1 course, 2 courses
+  targetMonth       Int?               // 1-12 (e.g., 4 for April)
 
-  studentMemberships StudentMembership[]
+  students          StudentMembership[]
   studentPayments    StudentPayment[]
   coupons            Coupon[]
 }

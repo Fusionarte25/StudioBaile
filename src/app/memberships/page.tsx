@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { ClassSelectorModal } from '@/components/shared/ClassSelectorModal';
+import { CourseSelectorModal } from '@/components/shared/CourseSelectorModal';
 import { CustomPackModal } from '@/components/shared/CustomPackModal';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LoginRequiredDialog } from '@/components/shared/login-required-dialog';
@@ -88,6 +89,8 @@ export default function MembershipsPage() {
   const { settings } = useSettings();
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+  const [isCourseSelectorOpen, setIsCourseSelectorOpen] = useState(false);
+  const [isClassSelectorOpen, setIsClassSelectorOpen] = useState(false);
   const [isCustomPackOpen, setIsCustomPackOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [planToConfirm, setPlanToConfirm] = useState<MembershipPlan | null>(null);
@@ -130,14 +133,20 @@ export default function MembershipsPage() {
 
     setSelectedPlan(plan);
 
-    if (plan.accessType === 'time_pass' || plan.accessType === 'class_pack') {
-        setPlanToConfirm(plan);
+    if (plan.accessType === 'time_pass') {
+        if (plan.isUnlimitedCourses) {
+            setPlanToConfirm(plan);
+        } else {
+            setIsCourseSelectorOpen(true);
+        }
+    } else if (plan.accessType === 'class_pack') {
+        setIsClassSelectorOpen(true);
     } else if (plan.accessType === 'custom_pack') {
         setIsCustomPackOpen(true);
     }
   };
 
-  const processPurchase = async (planToPurchase: MembershipPlan, customConfig?: { classCount: number, totalPrice: number }) => {
+  const processPurchase = async (planToPurchase: MembershipPlan, options?: { classCount?: number, totalPrice?: number, selectedClassIds?: string[] }) => {
     if (!userId) return;
 
     if (!planToPurchase.id) {
@@ -156,8 +165,9 @@ export default function MembershipsPage() {
             body: JSON.stringify({ 
                 userId, 
                 planId: planToPurchase.id,
-                classCount: customConfig?.classCount,
-                totalPrice: customConfig?.totalPrice
+                classCount: options?.classCount,
+                totalPrice: options?.totalPrice,
+                selectedClassIds: options?.selectedClassIds
             }),
         });
 
@@ -190,9 +200,16 @@ export default function MembershipsPage() {
   
   const handleCustomPackTierSelected = (tier: PriceTier) => {
     if (!selectedPlan || selectedPlan.accessType !== 'custom_pack') return;
-
     processPurchase(selectedPlan, { classCount: tier.classCount, totalPrice: tier.price });
     setIsCustomPackOpen(false);
+    setSelectedPlan(null);
+  };
+
+  const handleClassesSelected = (selectedIds: string[]) => {
+    if (!selectedPlan) return;
+    processPurchase(selectedPlan, { selectedClassIds: selectedIds });
+    setIsCourseSelectorOpen(false);
+    setIsClassSelectorOpen(false);
     setSelectedPlan(null);
   };
   
@@ -242,6 +259,24 @@ export default function MembershipsPage() {
           isOpen={isCustomPackOpen}
           onClose={() => setIsCustomPackOpen(false)}
           onConfirm={handleCustomPackTierSelected}
+        />
+      )}
+
+      {selectedPlan && selectedPlan.accessType === 'time_pass' && !selectedPlan.isUnlimitedCourses && (
+        <CourseSelectorModal
+          plan={selectedPlan}
+          isOpen={isCourseSelectorOpen}
+          onClose={() => setIsCourseSelectorOpen(false)}
+          onConfirm={handleClassesSelected}
+        />
+      )}
+
+      {selectedPlan && selectedPlan.accessType === 'class_pack' && (
+        <ClassSelectorModal
+          plan={selectedPlan}
+          isOpen={isClassSelectorOpen}
+          onClose={() => setIsClassSelectorOpen(false)}
+          onConfirm={handleClassesSelected}
         />
       )}
     </>

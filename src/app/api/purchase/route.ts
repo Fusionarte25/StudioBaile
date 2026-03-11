@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     // 1. Parse the lenient schema to get the IDs.
     const { userId, planId } = purchaseSchema.parse(body);
-    const { classCount, totalPrice } = body; // Get optional values directly from body
+    const { classCount, totalPrice, selectedClassIds } = body; // Get optional values directly from body
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
       validityMonths: planDataFromDb.validityMonths ?? undefined,
       startDate: planDataFromDb.startDate ?? undefined,
       endDate: planDataFromDb.endDate ?? undefined,
+      // Include new fields
+      isUnlimitedCourses: planDataFromDb.isUnlimitedCourses ?? false,
+      maxCourses: planDataFromDb.maxCourses ?? undefined,
+      targetMonth: planDataFromDb.targetMonth ?? undefined,
     };
 
     const plan = membershipPlanZodSchema.parse(planToValidate);
@@ -80,13 +84,27 @@ export async function POST(request: NextRequest) {
       startDate = plan.startDate ? new Date(plan.startDate) : now;
       endDate = plan.endDate ? new Date(plan.endDate) : add(startDate, { months: 1 }); // Fallback to 1 month
     } else if (plan.validityType === 'monthly') {
-      const startMonth = plan.monthlyStartType === 'next_month' ? addMonths(now, 1) : now;
-      startDate = plan.monthlyStartType === 'next_month' ? startOfMonth(startMonth) : now;
+      let startMonthDate = now;
+      
+      // If a targetMonth is specified, force that month
+      if (plan.targetMonth) {
+        const target = plan.targetMonth - 1; // 0-indexed
+        startMonthDate = new Date(now.getFullYear(), target, 1);
+        
+        // If the target month has already passed this year, assume next year
+        if (startMonthDate < startOfMonth(now)) {
+          startMonthDate = addMonths(startMonthDate, 12);
+        }
+      } else if (plan.monthlyStartType === 'next_month') {
+        startMonthDate = addMonths(now, 1);
+      }
+
+      startDate = startOfMonth(startMonthDate);
       endDate = subDays(addMonths(startDate, plan.validityMonths || 1), 1);
     } else { // relative
       startDate = now;
       const durationValue = plan.durationValue || 1;
-      const durationUnit = plan.durationUnit || 'months';
+      const durationUnit = plan.durationUnit || 'months' as any;
       endDate = add(startDate, {
         [durationUnit]: durationValue
       });
@@ -109,6 +127,8 @@ export async function POST(request: NextRequest) {
       });
 
       // 2. Delete old membership and create the new one
+      // We only delete if it overlaps or if we want one active membership for now.
+      // User requested "one active membership" logic in previous sessions.
       await tx.studentMembership.deleteMany({
         where: { userId: userId },
       });
@@ -120,6 +140,7 @@ export async function POST(request: NextRequest) {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           classesRemaining: classesRemaining,
+          selectedClassIds: Array.isArray(selectedClassIds) ? JSON.stringify(selectedClassIds) : "[]",
         },
       });
 

@@ -71,6 +71,11 @@ const formSchema = z.object({
   visibility: z.enum(['public', 'unlisted']).default('public'),
   allowedClasses: z.array(z.string()).optional(),
   registrationFee: z.coerce.number().optional().default(0),
+
+  // NEW: Course quantity and target month
+  isUnlimitedCourses: z.boolean().default(false),
+  maxCourses: z.coerce.number().optional(),
+  targetMonth: z.coerce.number().min(1).max(12).optional(),
 }).refine(data => {
   if (data.accessType === 'class_pack') {
     return data.classCount !== undefined && data.classCount > 0 && data.price !== undefined;
@@ -156,6 +161,9 @@ export default function AdminMembershipsPage() {
       visibility: 'public',
       priceTiers: [],
       registrationFee: 0,
+      isUnlimitedCourses: true,
+      maxCourses: 1,
+      targetMonth: undefined,
     },
   });
 
@@ -378,16 +386,16 @@ export default function AdminMembershipsPage() {
               <div className="space-y-4 border-b pb-6 pt-2">
                 <h3 className="text-lg font-semibold flex items-center gap-2"><TicketPercent className="h-5 w-5" /> Tipo de Acceso y Precios</h3>
                 <FormField control={form.control} name="accessType" render={({ field }) => (
-                  <FormItem><FormLabel>Forma de consumo</FormLabel>
-                    <Select tobacco-index="-1" onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="time_pass">Por Tiempo (Mensual / Ilimitado)</SelectItem>
-                        <SelectItem value="class_pack">Por Clases (Bono Fijo)</SelectItem>
-                        <SelectItem value="custom_pack">Personalizado (Alumno elige cantidad)</SelectItem>
-                      </SelectContent>
-                    </Select><FormMessage />
-                  </FormItem>
+                   <FormItem><FormLabel>Forma de consumo</FormLabel>
+                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                       <SelectContent>
+                         <SelectItem value="time_pass">Por Tiempo (Mensual / Ilimitado)</SelectItem>
+                         <SelectItem value="class_pack">Por Clases (Bono Fijo)</SelectItem>
+                         <SelectItem value="custom_pack">Personalizado (Alumno elige cantidad)</SelectItem>
+                       </SelectContent>
+                     </Select><FormMessage />
+                   </FormItem>
                 )} />
 
                 <div className="grid grid-cols-2 gap-4">
@@ -407,14 +415,28 @@ export default function AdminMembershipsPage() {
                   )} />
                 )}
 
+                {accessType === 'time_pass' && (
+                  <div className="space-y-4 p-3 bg-muted rounded-md mt-2">
+                    <FormField control={form.control} name="isUnlimitedCourses" render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between"><FormLabel>¿Es acceso Ilimitado a todos los cursos?</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                    )} />
+
+                    {!form.watch('isUnlimitedCourses') && (
+                      <FormField control={form.control} name="maxCourses" render={({ field }) => (
+                        <FormItem><FormLabel>Cantidad de Cursos Permitidos</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormDescription>El alumno deberá elegir exactamente esta cantidad de cursos al inscribirse.</FormDescription><FormMessage /></FormItem>
+                      )} />
+                    )}
+                  </div>
+                )}
+
                 {accessType === 'custom_pack' && (
                   <div className="space-y-3 p-3 bg-muted rounded-md">
                     <FormLabel>Configurar tramos de bono</FormLabel>
                     {fields.map((item, index) => (
                       <div key={item.id} className="flex items-end gap-3 p-2 border bg-background rounded-md shadow-sm">
                         <GripVertical className="h-5 w-5 text-muted-foreground" />
-                        <FormField control={form.control} name={`priceTiers.${index}.classCount`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Cant. Clases</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name={`priceTiers.${index}.price`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Precio (€)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name={`priceTiers.${index}.classCount`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Cant. Clases</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name={`priceTiers.${index}.price`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Precio (€)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}> <Trash2 className="h-4 w-4 text-destructive" /> </Button>
                       </div>
                     ))}
@@ -425,7 +447,7 @@ export default function AdminMembershipsPage() {
 
               {/* Section 3: Validity */}
               <div className="space-y-4 border-b pb-6 pt-2">
-                <h3 className="text-lg font-semibold flex items-center gap-2"><Calendar className="h-5 w-5" /> Validez y Caducidad</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-2"><CalendarIcon className="h-5 w-5" /> Validez y Caducidad</h3>
                 <FormField control={form.control} name="validityType" render={({ field }) => (
                   <FormItem><FormLabel>¿Cómo calculamos la vigencia?</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -441,20 +463,35 @@ export default function AdminMembershipsPage() {
 
                 {validityType === 'relative' && (
                   <div className="grid grid-cols-2 gap-4 p-3 bg-muted rounded-md">
-                    <FormField control={form.control} name="durationValue" render={({ field }) => (<FormItem><FormLabel>Durará...</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="durationUnit" render={({ field }) => (<FormItem><FormLabel>Unidad</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="days">Días</SelectItem><SelectItem value="weeks">Semanas</SelectItem><SelectItem value="months">Meses</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="durationValue" render={({ field }) => ( <FormItem><FormLabel>Durará...</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="durationUnit" render={({ field }) => ( <FormItem><FormLabel>Unidad</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="days">Días</SelectItem><SelectItem value="weeks">Semanas</SelectItem><SelectItem value="months">Meses</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                   </div>
                 )}
                 {validityType === 'monthly' && (
-                  <div className="grid grid-cols-2 gap-4 p-3 bg-muted rounded-md">
-                    <FormField control={form.control} name="validityMonths" render={({ field }) => (<FormItem><FormLabel>¿Cuántos meses?</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="monthlyStartType" render={({ field }) => (<FormItem><FormLabel>Día de inicio</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="from_purchase">Día de compra</SelectItem><SelectItem value="next_month">Día 1 del siguiente mes</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                  <div className="space-y-4 p-3 bg-muted rounded-md">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="validityMonths" render={({ field }) => ( <FormItem><FormLabel>¿Cuántos meses?</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                      <FormField control={form.control} name="monthlyStartType" render={({ field }) => ( <FormItem><FormLabel>Día de inicio</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="from_purchase">Día de compra</SelectItem><SelectItem value="next_month">Día 1 del siguiente mes</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                    </div>
+                    <FormField control={form.control} name="targetMonth" render={({ field }) => (
+                      <FormItem><FormLabel>Mes de Referencia (Opcional)</FormLabel>
+                        <Select onValueChange={(v) => field.onChange(parseInt(v))} defaultValue={field.value?.toString()}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Elegir mes..." /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, i) => (
+                              <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>Útil para inscribirse en Marzo para un curso de Abril.</FormDescription><FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
                 )}
                 {validityType === 'fixed' && (
                   <div className="grid grid-cols-2 gap-4 p-3 bg-muted rounded-md">
-                    <FormField control={form.control} name="startDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Inicio Fijo</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elegir fecha</span>)}<Calendar className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} tobacco-index="-1" initialFocus locale={es} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fin Fijo</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elegir fecha</span>)}<Calendar className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} tobacco-index="-1" initialFocus locale={es} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="startDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Inicio Fijo</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elegir fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} tobacco-index="-1" initialFocus locale={es} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Fin Fijo</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? (format(field.value, "PPP", { locale: es })) : (<span>Elegir fecha</span>)}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} tobacco-index="-1" initialFocus locale={es} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
                   </div>
                 )}
               </div>

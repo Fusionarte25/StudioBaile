@@ -45,6 +45,10 @@ export async function GET() {
         })(),
         isPopular: plan.isPopular ?? false,
         visibility: plan.visibility as 'public' | 'unlisted',
+        registrationFee: plan.registrationFee ?? 0,
+        isUnlimitedCourses: plan.isUnlimitedCourses ?? true,
+        maxCourses: plan.maxCourses ?? 1,
+        targetMonth: plan.targetMonth ?? undefined,
         allowedClasses: (() => {
           try { return JSON.parse(plan.allowedClasses || '[]'); } catch { return []; }
         })(),
@@ -73,7 +77,11 @@ export async function POST(request: Request) {
     const dataToCreate: any = {
       ...validatedData,
       features: JSON.stringify(validatedData.features || []),
-      allowedClasses: JSON.stringify(validatedData.allowedClasses || [])
+      allowedClasses: JSON.stringify(validatedData.allowedClasses || []),
+      registrationFee: validatedData.registrationFee ?? 0,
+      isUnlimitedCourses: validatedData.isUnlimitedCourses ?? true,
+      maxCourses: validatedData.maxCourses ?? 1,
+      targetMonth: validatedData.targetMonth ?? null,
     };
 
     if (validatedData.priceTiers && Array.isArray(validatedData.priceTiers) && validatedData.priceTiers.length > 0) {
@@ -102,7 +110,10 @@ export async function POST(request: Request) {
       validityType: newPlan.validityType as 'relative' | 'monthly' | 'fixed',
       durationUnit: newPlan.durationUnit as 'days' | 'weeks' | 'months' | undefined,
       monthlyStartType: newPlan.monthlyStartType as 'from_purchase' | 'next_month' | undefined,
-      visibility: newPlan.visibility as 'public' | 'unlisted'
+      visibility: newPlan.visibility as 'public' | 'unlisted',
+      isUnlimitedCourses: newPlan.isUnlimitedCourses,
+      maxCourses: newPlan.maxCourses,
+      targetMonth: newPlan.targetMonth,
     };
 
     return NextResponse.json(response, { status: 201 });

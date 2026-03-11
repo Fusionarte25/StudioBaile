@@ -21,7 +21,11 @@ export async function PUT(
     const dataToUpdate: any = {
       ...validatedData,
       features: JSON.stringify(validatedData.features || []),
-      allowedClasses: JSON.stringify(validatedData.allowedClasses || [])
+      allowedClasses: JSON.stringify(validatedData.allowedClasses || []),
+      registrationFee: validatedData.registrationFee ?? 0,
+      isUnlimitedCourses: validatedData.isUnlimitedCourses ?? true,
+      maxCourses: validatedData.maxCourses ?? 1,
+      targetMonth: validatedData.targetMonth ?? null,
     };
 
     if (validatedData.priceTiers && Array.isArray(validatedData.priceTiers)) {

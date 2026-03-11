@@ -55,6 +55,11 @@ export const membershipPlanZodSchema = z.object({
   visibility: z.enum(['public', 'unlisted']),
   allowedClasses: z.array(z.string()).optional(),
   registrationFee: z.number().optional(),
+
+  // NEW: Course quantity and target month
+  isUnlimitedCourses: z.boolean().optional(),
+  maxCourses: z.number().int().optional(),
+  targetMonth: z.number().int().min(1).max(12).optional(),
 });
 
 export type MembershipPlan = z.infer<typeof membershipPlanZodSchema>;
@@ -64,6 +69,7 @@ export type ClassType = 'recurring' | 'one-time' | 'workshop' | 'rental';
 export type DanceClass = {
   id: string;
   name: string;
+  description?: string;
   type: ClassType;
   styleId: string;
   levelId: string;
