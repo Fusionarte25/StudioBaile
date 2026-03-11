@@ -9,11 +9,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ArrowLeft, Calendar, Check, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import type { UserRole } from '@/context/auth-context';
 import type { DanceClass, User } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
 
 type AttendanceSheetProps = {
   classId: string;
@@ -31,26 +32,40 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
 
   useEffect(() => {
     const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const [classRes, usersRes] = await Promise.all([
-                fetch('/api/classes'), // Inefficient, should be /api/classes/[id] if it existed
-                fetch('/api/users')
-            ]);
-            if (classRes.ok && usersRes.ok) {
-                const allClasses: DanceClass[] = await classRes.json();
-                const allUsers: User[] = await usersRes.json();
-                const targetClass = allClasses.find(c => c.id === classId);
-                if(targetClass) {
-                    setDanceClass(targetClass);
-                    setEnrolledStudents(allUsers.filter(u => targetClass.enrolledStudentIds.includes(u.id)));
-                }
-            }
-        } catch(e) {
-            toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
+      setIsLoading(true);
+      try {
+        const [classRes, usersRes, membershipsRes, plansRes] = await Promise.all([
+          fetch('/api/classes'),
+          fetch('/api/users'),
+          fetch('/api/student-memberships'),
+          fetch('/api/memberships'),
+        ]);
+        if (classRes.ok && usersRes.ok && membershipsRes.ok && plansRes.ok) {
+          const allClasses: DanceClass[] = await classRes.json();
+          const allUsers: User[] = await usersRes.json();
+          const allMemberships: any[] = await membershipsRes.json();
+          const allPlans: any[] = await plansRes.json();
+
+          const targetClass = allClasses.find(c => c.id === classId);
+          if (targetClass) {
+            setDanceClass(targetClass);
+            const students = allUsers.filter(u => targetClass.enrolledStudentIds.includes(u.id));
+
+            // Attach membership info to students for display
+            const studentsWithMembership = students.map(s => {
+              const m = allMemberships.find(m => m.userId === s.id);
+              const p = m ? allPlans.find(plan => plan.id === m.planId) : null;
+              return { ...s, membership: m, plan: p };
+            });
+
+            setEnrolledStudents(studentsWithMembership as any);
+          }
         }
+      } catch (e) {
+        toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchData();
   }, [classId, toast]);
@@ -59,15 +74,15 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
   const [attendance, setAttendance] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-      if (initialAttendance && initialAttendance.studentStatus) {
-         setAttendance(Object.fromEntries(initialAttendance.studentStatus.map(s => [s.studentId, s.present])));
-      } else {
-         setAttendance(enrolledStudents.reduce((acc, student) => ({ ...acc, [student.id]: true }), {}));
-      }
+    if (initialAttendance && initialAttendance.studentStatus) {
+      setAttendance(Object.fromEntries(initialAttendance.studentStatus.map(s => [s.studentId, s.present])));
+    } else {
+      setAttendance(enrolledStudents.reduce((acc, student) => ({ ...acc, [student.id]: true }), {}));
+    }
   }, [initialAttendance, enrolledStudents]);
 
   if (isLoading) {
-      return <div>Cargando...</div>
+    return <div>Cargando...</div>
   }
 
   if (!danceClass) {
@@ -92,16 +107,16 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
       studentId: Number(studentId),
       present,
     }));
-    
+
     recordAttendance(classId, date, studentStatus);
 
     toast({
       title: 'Asistencia Guardada',
-      description: `La asistencia para la clase del ${format(parseISO(date), 'PPP', {locale: es})} ha sido guardada.`,
+      description: `La asistencia para la clase del ${format(parseISO(date), 'PPP', { locale: es })} ha sido guardada.`,
     });
     router.back();
   };
-  
+
   const backUrl = userRole === 'Admin' ? '/admin/classes' : '/my-classes';
 
   return (
@@ -116,12 +131,12 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
           <CardTitle className="text-2xl font-headline">{danceClass.name}</CardTitle>
           <CardDescription className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
             <span className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {format(parseISO(date), 'EEEE, d \'de\' MMMM', {locale: es})}
+              <Calendar className="h-4 w-4" />
+              {format(parseISO(date), 'EEEE, d \'de\' MMMM', { locale: es })}
             </span>
-             <span className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                {danceClass.time}
+            <span className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              {danceClass.time}
             </span>
           </CardDescription>
         </CardHeader>
@@ -135,35 +150,63 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
                 <TableRow>
                   <TableHead className="w-[100px]">Presente</TableHead>
                   <TableHead>Nombre del Alumno</TableHead>
+                  <TableHead className="hidden sm:table-cell">Estado / Plan</TableHead>
                   <TableHead className="hidden md:table-cell">Email</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {enrolledStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={attendance[student.id] ?? true}
-                        onCheckedChange={(checked) => handleAttendanceChange(student.id, !!checked)}
-                        aria-label={`Marcar asistencia para ${student.name}`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{student.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{student.email}</TableCell>
-                  </TableRow>
-                ))}
-                 {enrolledStudents.length === 0 && (
-                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No hay alumnos inscritos.</TableCell></TableRow>
-                 )}
+                {enrolledStudents.map((student: any) => {
+                  const m = student.membership;
+                  const p = student.plan;
+                  const isExpirado = m ? isBefore(parseISO(m.endDate), parseISO(date)) : true;
+                  const hasClasses = p?.accessType === 'class_pack' ? (m?.classesRemaining ?? 0) > 0 : true;
+                  const isAlDía = m && !isExpirado && hasClasses;
+
+                  return (
+                    <TableRow key={student.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={attendance[student.id] ?? true}
+                          onCheckedChange={(checked) => handleAttendanceChange(student.id, !!checked)}
+                          aria-label={`Marcar asistencia para ${student.name}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {student.name}
+                        <div className="md:hidden text-xs text-muted-foreground">
+                          {isAlDía ? '✅ Al día' : '❌ Problema con plan'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {m ? (
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={isAlDía ? 'secondary' : 'destructive'} className="w-fit text-[10px] px-1 h-5">
+                              {isExpirado ? 'Expirado' : !hasClasses ? 'Sin clases' : 'Activo'}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                              {p?.title} {p?.accessType === 'class_pack' && `(${m.classesRemaining}/${p.classCount})`}
+                            </span>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin Plan</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{student.email}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                {enrolledStudents.length === 0 && (
+                  <TableRow><TableCell colSpan={3} className="h-24 text-center">No hay alumnos inscritos.</TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
         <CardFooter>
-            <Button onClick={handleSaveAttendance}>
-                <Check className="mr-2 h-4 w-4" />
-                Guardar Asistencia
-            </Button>
+          <Button onClick={handleSaveAttendance}>
+            <Check className="mr-2 h-4 w-4" />
+            Guardar Asistencia
+          </Button>
         </CardFooter>
       </Card>
     </div>

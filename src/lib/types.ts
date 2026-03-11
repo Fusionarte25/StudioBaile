@@ -37,7 +37,7 @@ export const membershipPlanZodSchema = z.object({
   title: z.string(),
   description: z.string(),
   accessType: z.enum(['time_pass', 'class_pack', 'custom_pack']),
-  
+
   price: z.number().optional(), // Used for time_pass and class_pack
   classCount: z.number().int().optional(), // Used for class_pack
   priceTiers: z.array(z.object({ classCount: z.number(), price: z.number() })).optional(), // Used for custom_pack
@@ -49,11 +49,12 @@ export const membershipPlanZodSchema = z.object({
   monthlyStartType: z.enum(['from_purchase', 'next_month']).optional(),
   startDate: z.date().optional(),
   endDate: z.date().optional(),
-  
+
   features: z.array(z.string()),
   isPopular: z.boolean().optional(),
   visibility: z.enum(['public', 'unlisted']),
   allowedClasses: z.array(z.string()).optional(),
+  registrationFee: z.number().optional(),
 });
 
 export type MembershipPlan = z.infer<typeof membershipPlanZodSchema>;
@@ -74,10 +75,10 @@ export type DanceClass = {
   capacity: number;
   enrolledStudentIds: number[];
   cancellationPolicyHours?: number;
-  
+
   date?: string; // "YYYY-MM-DD" for 'one-time', 'workshop', 'rental'
-  
-  status: 'scheduled' | 'completed' | 'cancelled-low-attendance' | 'cancelled-teacher'; 
+
+  status: 'scheduled' | 'completed' | 'cancelled-low-attendance' | 'cancelled-teacher';
   isCancelledAndHidden?: boolean;
   isVisibleToStudents?: boolean;
   rentalContact?: string;
@@ -110,22 +111,22 @@ export type PaymentDetails = z.infer<typeof paymentDetailsJsonSchema>;
 
 
 export type User = {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    joined: string;
-    avatar: string;
-    dob?: string; // YYYY-MM-DD
-    mobile?: string;
-    isVisibleToStudents?: boolean;
-    isPartner?: boolean;
-    // Student-specific fields
-    attendanceHistory?: AttendanceRecord[];
-    // Teacher-specific fields
-    bio?: string;
-    specialties?: string[];
-    paymentDetailsJson?: PaymentDetails;
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  joined: string;
+  avatar: string;
+  dob?: string; // YYYY-MM-DD
+  mobile?: string;
+  isVisibleToStudents?: boolean;
+  isPartner?: boolean;
+  // Student-specific fields
+  attendanceHistory?: AttendanceRecord[];
+  // Teacher-specific fields
+  bio?: string;
+  specialties?: string[];
+  paymentDetailsJson?: PaymentDetails;
 };
 
 export type Transaction = {
@@ -147,21 +148,21 @@ export type StudentMembership = {
 }
 
 export type StudentPayment = {
-    id: string;
-    studentId: number;
-    planId: string;
-    invoiceDate: string; // YYYY-MM-DD
-    totalAmount: number;
-    status: 'paid' | 'pending' | 'deposit';
-    amountPaid: number;
-    amountDue: number;
-    notes?: string;
-    lastUpdatedBy?: string;
-    lastUpdatedDate?: string; // ISO 8601
+  id: string;
+  studentId: number;
+  planId: string;
+  invoiceDate: string; // YYYY-MM-DD
+  totalAmount: number;
+  status: 'paid' | 'pending' | 'deposit';
+  amountPaid: number;
+  amountDue: number;
+  notes?: string;
+  lastUpdatedBy?: string;
+  lastUpdatedDate?: string; // ISO 8601
 }
 
 
-export type Permission = 
+export type Permission =
   | 'view_dashboard'
   | 'manage_users'
   | 'manage_students'
@@ -185,17 +186,17 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 
 
 export type TaskNote = {
-    id: string;
-    title: string;
-    description?: string;
-    status: TaskStatus;
-    category: string;
-    priority?: TaskPriority;
-    assigneeIds?: number[];
-    createdAt: string; // ISO Date String
-    dueDate?: string; // YYYY-MM-DD
-    alertDateTime?: string; // ISO Date String
-    alertDismissed?: boolean;
+  id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  category: string;
+  priority?: TaskPriority;
+  assigneeIds?: number[];
+  createdAt: string; // ISO Date String
+  dueDate?: string; // YYYY-MM-DD
+  alertDateTime?: string; // ISO Date String
+  alertDismissed?: boolean;
 };
 
 export type HeroSlide = {
@@ -233,7 +234,7 @@ export type AcademySettings = {
   membershipEmailMessage?: string;
   heroSlides: HeroSlide[];
   scheduleImages?: ScheduleImage[];
-  
+
   // About Us Page Content
   aboutUsTitle: string;
   aboutUsStory: string;

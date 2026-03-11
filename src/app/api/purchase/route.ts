@@ -30,38 +30,39 @@ export async function POST(request: NextRequest) {
     if (!planDataFromDb) {
       return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 });
     }
-    
+
     // 3. Validate the AUTHORITATIVE data with our strict schema.
     let parsedTiers = [];
     if (typeof planDataFromDb.priceTiers === 'string') {
-        try {
-          parsedTiers = JSON.parse(planDataFromDb.priceTiers);
-        } catch (e) {
-          console.error(`Failed to parse priceTiers for plan ${planDataFromDb.id}:`, e);
-          parsedTiers = [];
-        }
+      try {
+        parsedTiers = JSON.parse(planDataFromDb.priceTiers);
+      } catch (e) {
+        console.error(`Failed to parse priceTiers for plan ${planDataFromDb.id}:`, e);
+        parsedTiers = [];
+      }
     } else if (Array.isArray(planDataFromDb.priceTiers)) {
-        parsedTiers = planDataFromDb.priceTiers;
+      parsedTiers = planDataFromDb.priceTiers;
     }
 
     // Temporary validation object to satisfy the Zod schema which might have non-optional fields
     const planToValidate = {
-        ...planDataFromDb,
-        priceTiers: parsedTiers,
-        price: planDataFromDb.price ?? undefined,
-        classCount: planDataFromDb.classCount ?? undefined,
-        durationValue: planDataFromDb.durationValue ?? undefined,
-        validityMonths: planDataFromDb.validityMonths ?? undefined,
-        startDate: planDataFromDb.startDate ?? undefined,
-        endDate: planDataFromDb.endDate ?? undefined,
+      ...planDataFromDb,
+      priceTiers: parsedTiers,
+      price: planDataFromDb.price ?? undefined,
+      classCount: planDataFromDb.classCount ?? undefined,
+      durationValue: planDataFromDb.durationValue ?? undefined,
+      validityMonths: planDataFromDb.validityMonths ?? undefined,
+      startDate: planDataFromDb.startDate ?? undefined,
+      endDate: planDataFromDb.endDate ?? undefined,
     };
-    
+
     const plan = membershipPlanZodSchema.parse(planToValidate);
 
     // --- FIN DEL BLINDAJE ---
-
+    const regFee = plan.registrationFee || 0;
     // Use the fetched data from here on, not the client data.
-    const finalPrice = totalPrice ?? (plan.price ? plan.price : 0);
+    const basePrice = totalPrice ?? (plan.price ? plan.price : 0);
+    const finalPrice = basePrice + regFee;
     const classesRemaining = classCount ?? (plan.accessType === 'class_pack' ? plan.classCount : undefined);
 
     let startDate: Date;
@@ -69,19 +70,19 @@ export async function POST(request: NextRequest) {
     const now = new Date();
 
     if (plan.validityType === 'fixed') {
-        startDate = plan.startDate ? new Date(plan.startDate) : now;
-        endDate = plan.endDate ? new Date(plan.endDate) : add(startDate, { months: 1 }); // Fallback to 1 month
+      startDate = plan.startDate ? new Date(plan.startDate) : now;
+      endDate = plan.endDate ? new Date(plan.endDate) : add(startDate, { months: 1 }); // Fallback to 1 month
     } else if (plan.validityType === 'monthly') {
-        const startMonth = plan.monthlyStartType === 'next_month' ? addMonths(now, 1) : now;
-        startDate = plan.monthlyStartType === 'next_month' ? startOfMonth(startMonth) : now;
-        endDate = subDays(addMonths(startDate, plan.validityMonths || 1), 1);
+      const startMonth = plan.monthlyStartType === 'next_month' ? addMonths(now, 1) : now;
+      startDate = plan.monthlyStartType === 'next_month' ? startOfMonth(startMonth) : now;
+      endDate = subDays(addMonths(startDate, plan.validityMonths || 1), 1);
     } else { // relative
-        startDate = now;
-        const durationValue = plan.durationValue || 1;
-        const durationUnit = plan.durationUnit || 'months';
-        endDate = add(startDate, {
-            [durationUnit]: durationValue
-        });
+      startDate = now;
+      const durationValue = plan.durationValue || 1;
+      const durationUnit = plan.durationUnit || 'months';
+      endDate = add(startDate, {
+        [durationUnit]: durationValue
+      });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       await tx.studentMembership.deleteMany({
         where: { userId: userId },
       });
-      
+
       await tx.studentMembership.create({
         data: {
           userId: userId,

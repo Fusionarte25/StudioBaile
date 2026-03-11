@@ -46,25 +46,72 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { classId, date, studentStatus } = attendanceSchema.parse(body);
 
-        // Delete existing records for this class and date to avoid duplicates
-        await prisma.attendanceRecord.deleteMany({
-            where: {
-                classId,
-                date,
-            },
+        // 1. Get existing records to check for changes
+        const existingRecords = await prisma.attendanceRecord.findMany({
+            where: { classId, date },
         });
 
-        // Bulk create new records
-        const newRecords = await prisma.attendanceRecord.createMany({
-            data: studentStatus.map((status) => ({
-                classId,
-                studentId: status.studentId,
-                date,
-                status: status.present ? 'presente' : 'ausente',
-            })),
+        // 2. Process changes in a transaction
+        await prisma.$transaction(async (tx) => {
+            for (const status of studentStatus) {
+                const oldRecord = existingRecords.find(r => r.studentId === status.studentId);
+                const wasPresent = oldRecord?.status === 'presente';
+                const isNowPresent = status.present;
+
+                if (isNowPresent && !wasPresent) {
+                    // Mark as present: Decrement classes if applicable
+                    const membership = await tx.studentMembership.findFirst({
+                        where: {
+                            userId: status.studentId,
+                            startDate: { lte: date },
+                            endDate: { gte: date },
+                        }
+                    });
+
+                    if (membership && membership.classesRemaining !== null && membership.classesRemaining > 0) {
+                        await tx.studentMembership.update({
+                            where: { id: membership.id },
+                            data: { classesRemaining: { decrement: 1 } }
+                        });
+                    }
+                } else if (!isNowPresent && wasPresent) {
+                    // Mark as absent (reverting): Increment classes if applicable
+                    const membership = await tx.studentMembership.findFirst({
+                        where: {
+                            userId: status.studentId,
+                            startDate: { lte: date },
+                            endDate: { gte: date },
+                        }
+                    });
+
+                    if (membership && membership.classesRemaining !== null) {
+                        await tx.studentMembership.update({
+                            where: { id: membership.id },
+                            data: { classesRemaining: { increment: 1 } }
+                        });
+                    }
+                }
+            }
+
+            // 3. Delete existing records for this class and date
+            await tx.attendanceRecord.deleteMany({
+                where: { classId, date },
+            });
+
+            // 4. Create new records
+            if (studentStatus.length > 0) {
+                await tx.attendanceRecord.createMany({
+                    data: studentStatus.map((status) => ({
+                        classId,
+                        studentId: status.studentId,
+                        date,
+                        status: status.present ? 'presente' : 'ausente',
+                    })),
+                });
+            }
         });
 
-        return NextResponse.json({ success: true, count: newRecords.count });
+        return NextResponse.json({ success: true });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 });

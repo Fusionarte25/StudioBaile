@@ -129,6 +129,7 @@ model MembershipPlan {
   isPopular         Boolean?
   visibility        String
   allowedClasses    String             @default("[]")
+  registrationFee   Float?             @default(0)
 
   studentMemberships StudentMembership[]
   studentPayments    StudentPayment[]
