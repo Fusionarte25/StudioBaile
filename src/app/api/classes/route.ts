@@ -46,16 +46,22 @@ export async function POST(request: Request) {
       data: {
         ...classData,
         style: {
-          connect: { id: styleId }
+          connectOrCreate: {
+            where: { id: styleId },
+            create: { id: styleId, name: styleId === 'practica' ? 'Práctica Libre' : styleId, description: 'Estilo autogenerado' }
+          }
         },
         level: {
-          connect: { id: levelId }
+          connectOrCreate: {
+            where: { id: levelId },
+            create: { id: levelId, name: levelId === 'todos' ? 'Todos los Niveles' : levelId, description: 'Nivel autogenerado' }
+          }
         },
         teachers: {
           connect: teacherIds.map((id: number) => ({ id })),
         },
         enrolledStudents: enrolledStudentIds ? {
-          connect: enrolledStudentIds.map((id: number) => ({id}))
+          connect: enrolledStudentIds.map((id: number) => ({ id }))
         } : undefined
       },
       include: {

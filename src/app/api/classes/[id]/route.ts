@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
@@ -60,8 +62,22 @@ export async function PUT(
         enrolledStudents: enrolledStudentIds ? {
           set: enrolledStudentIds.map((id: number) => ({ id })),
         } : undefined,
-        ...(styleId && { style: { connect: { id: styleId } } }),
-        ...(levelId && { level: { connect: { id: levelId } } }),
+        ...(styleId && {
+          style: {
+            connectOrCreate: {
+              where: { id: styleId },
+              create: { id: styleId, name: styleId === 'practica' ? 'Práctica Libre' : styleId, description: 'Estilo autogenerado' }
+            }
+          }
+        }),
+        ...(levelId && {
+          level: {
+            connectOrCreate: {
+              where: { id: levelId },
+              create: { id: levelId, name: levelId === 'todos' ? 'Todos los Niveles' : levelId, description: 'Nivel autogenerado' }
+            }
+          }
+        }),
       },
       include: {
         teachers: true,
