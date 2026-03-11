@@ -23,7 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, PlusCircle, Pencil, Trash2, TicketPercent, InfinityIcon, Settings, GripVertical, CalendarIcon as Calendar } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Pencil, Trash2, TicketPercent, Infinity as InfinityIcon, Settings, GripVertical, Calendar as CalendarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
