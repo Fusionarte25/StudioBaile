@@ -30,7 +30,7 @@ function ClassListCard({ danceClass, onEnrollRequest, allStyles, allUsers }: { d
     const style = allStyles.find(s => s.id === danceClass.styleId);
     const getTeacherNames = (ids: number[]) => allUsers.filter(u => ids.includes(u.id)).map(t => t.name).join(', ');
     const isEvent = ['one-time', 'workshop', 'rental'].includes(danceClass.type);
-   
+
     return (
         <Card className={cn(
             "transition-shadow hover:shadow-lg w-full flex flex-col",
@@ -58,9 +58,9 @@ function ClassListCard({ danceClass, onEnrollRequest, allStyles, allUsers }: { d
             </CardContent>
             {danceClass.type === 'recurring' && (
                 <CardFooter className="p-4 pt-0">
-                   <Button variant="outline" size="sm" className="w-full" onClick={() => onEnrollRequest(danceClass)}>
-                       Inscribirse (Mensual)
-                   </Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => onEnrollRequest(danceClass)}>
+                        Inscribirse (Mensual)
+                    </Button>
                 </CardFooter>
             )}
         </Card>
@@ -69,7 +69,7 @@ function ClassListCard({ danceClass, onEnrollRequest, allStyles, allUsers }: { d
 
 function ScheduleCalendarView({ classes, isRecurring, allUsers, allStyles, allLevels }: { classes: DanceClass[], isRecurring: boolean, allUsers: User[], allStyles: DanceStyle[], allLevels: DanceLevel[] }) {
     const [date, setDate] = useState<Date | undefined>(new Date());
-    
+
     const eventsByDate = useMemo(() => {
         const events: Record<string, DanceClass[]> = {};
         classes.forEach(c => {
@@ -96,14 +96,14 @@ function ScheduleCalendarView({ classes, isRecurring, allUsers, allStyles, allLe
             selectedDayEvents = eventsByDate[selectedDay] || [];
         }
     }
-    
+
     const hasEvent = (day: Date): boolean => {
-      if (isRecurring) {
-        const dayOfWeek = daysOfWeekMap[getDay(day)];
-        return classes.some(c => c.day === dayOfWeek);
-      }
-      const dateStr = format(day, 'yyyy-MM-dd');
-      return !!eventsByDate[dateStr];
+        if (isRecurring) {
+            const dayOfWeek = daysOfWeekMap[getDay(day)];
+            return classes.some(c => c.day === dayOfWeek);
+        }
+        const dateStr = format(day, 'yyyy-MM-dd');
+        return !!eventsByDate[dateStr];
     };
 
     const getTeacherNames = (ids: number[]) => allUsers.filter(u => ids.includes(u.id)).map(t => t.name).join(', ');
@@ -127,20 +127,20 @@ function ScheduleCalendarView({ classes, isRecurring, allUsers, allStyles, allLe
                             const style = allStyles.find(s => s.id === c.styleId);
                             return (
                                 <Card key={c.id} className={cn("overflow-hidden transition-shadow hover:shadow-lg bg-card/80 backdrop-blur-sm w-full", c.status && c.status.startsWith('cancelled') && "opacity-60")}>
-                                  <CardHeader className="p-4 flex flex-row items-start justify-between gap-4">
+                                    <CardHeader className="p-4 flex flex-row items-start justify-between gap-4">
                                         <div>
-                                          <CardTitle className={cn("text-base font-bold", c.status && c.status.startsWith('cancelled') && "line-through")}>{c.name}</CardTitle>
-                                          {c.type !== 'rental' && <CardDescription className="text-xs">{style?.name}</CardDescription>}
+                                            <CardTitle className={cn("text-base font-bold", c.status && c.status.startsWith('cancelled') && "line-through")}>{c.name}</CardTitle>
+                                            {c.type !== 'rental' && <CardDescription className="text-xs">{style?.name}</CardDescription>}
                                         </div>
-                                        {c.type === 'rental' 
-                                         ? <Badge variant="outline" className="flex items-center gap-1"><Building className="h-3 w-3" />Alquiler</Badge> 
-                                         : <Badge variant="secondary">{level?.name}</Badge>}
-                                  </CardHeader>
-                                  <CardContent className="p-4 pt-0 text-sm space-y-2">
-                                     <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> {c.time} ({c.duration})</div>
-                                     <div className="flex items-center gap-2 text-muted-foreground"><UserIcon className="h-4 w-4" />{getTeacherNames(c.teacherIds) || c.rentalContact}</div>
-                                     <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" /> {c.room}</div>
-                                  </CardContent>
+                                        {c.type === 'rental'
+                                            ? <Badge variant="outline" className="flex items-center gap-1"><Building className="h-3 w-3" />Alquiler</Badge>
+                                            : <Badge variant="secondary">{level?.name}</Badge>}
+                                    </CardHeader>
+                                    <CardContent className="p-4 pt-0 text-sm space-y-2">
+                                        <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> {c.time} ({c.duration})</div>
+                                        <div className="flex items-center gap-2 text-muted-foreground"><UserIcon className="h-4 w-4" />{getTeacherNames(c.teacherIds) || c.rentalContact}</div>
+                                        <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" /> {c.room}</div>
+                                    </CardContent>
                                 </Card>
                             )
                         })}
@@ -157,196 +157,215 @@ function ScheduleCalendarView({ classes, isRecurring, allUsers, allStyles, allLe
 }
 
 export default function SchedulePage() {
-  const [danceClasses, setDanceClasses] = useState<DanceClass[]>([]);
-  const [allLevels, setAllLevels] = useState<DanceLevel[]>([]);
-  const [allStyles, setAllStyles] = useState<DanceStyle[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+    const [danceClasses, setDanceClasses] = useState<DanceClass[]>([]);
+    const [allLevels, setAllLevels] = useState<DanceLevel[]>([]);
+    const [allStyles, setAllStyles] = useState<DanceStyle[]>([]);
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-  const [styleFilter, setStyleFilter] = useState('Todos');
-  const [levelFilter, setLevelFilter] = useState('Todos');
-  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
-  const [classToEnroll, setClassToEnroll] = useState<DanceClass | null>(null);
+    const [styleFilter, setStyleFilter] = useState('Todos');
+    const [levelFilter, setLevelFilter] = useState('Todos');
+    const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+    const [classToEnroll, setClassToEnroll] = useState<DanceClass | null>(null);
 
-  const { userRole, isAuthenticated, userId } = useAuth();
-  const { toast } = useToast();
-  const router = useRouter();
-  const { settings, isLoading: isSettingsLoading } = useSettings();
-  
-  useEffect(() => {
-    const fetchData = async () => {
-        setIsLoading(true);
+    const { userRole, isAuthenticated, userId } = useAuth();
+    const { toast } = useToast();
+    const router = useRouter();
+    const { settings, isLoading: isSettingsLoading } = useSettings();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [classesRes, levelsRes, stylesRes, usersRes, plansRes] = await Promise.all([
+                    fetch('/api/classes'), fetch('/api/levels'), fetch('/api/styles'),
+                    fetch('/api/users'), fetch('/api/memberships')
+                ]);
+                if (classesRes.ok) setDanceClasses(await classesRes.json());
+                if (levelsRes.ok) setAllLevels(await levelsRes.json());
+                if (stylesRes.ok) setAllStyles(await stylesRes.json());
+                if (usersRes.ok) setAllUsers(await usersRes.json());
+                if (plansRes.ok) setMembershipPlans(await plansRes.json());
+            } catch (e) {
+                toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, [toast]);
+
+    const styles = ['Todos', ...allStyles.map(s => s.name)];
+    const levels = ['Todos', ...allLevels.map(l => l.name)];
+
+    const handleEnrollRequest = (danceClass: DanceClass) => {
+        if (!isAuthenticated) { setIsLoginDialogOpen(true); return; }
+        if (userRole === 'Estudiante') { setClassToEnroll(danceClass); }
+        else { toast({ title: "Acción no permitida", description: "Solo los estudiantes pueden inscribirse.", variant: "destructive" }); }
+    };
+
+    const confirmMonthlyEnroll = async () => {
+        if (!classToEnroll || !userId) return;
+        const monthlyPlan = membershipPlans.find(p => p.id === 'unlimited-1' || p.validityType === 'monthly' || p.title.toLowerCase().includes('mensual'));
+        if (!monthlyPlan) { toast({ title: "Error", description: "No se encontró un plan mensual de suscripción. Por favor contacta con el administrador.", variant: "destructive" }); return; }
+
         try {
-            const [classesRes, levelsRes, stylesRes, usersRes, plansRes] = await Promise.all([
-                fetch('/api/classes'), fetch('/api/levels'), fetch('/api/styles'),
-                fetch('/api/users'), fetch('/api/memberships')
-            ]);
-            if (classesRes.ok) setDanceClasses(await classesRes.json());
-            if (levelsRes.ok) setAllLevels(await levelsRes.json());
-            if (stylesRes.ok) setAllStyles(await stylesRes.json());
-            if (usersRes.ok) setAllUsers(await usersRes.json());
-            if (plansRes.ok) setMembershipPlans(await plansRes.json());
+            const response = await fetch('/api/purchase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    planId: monthlyPlan.id,
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Error al procesar la inscripción');
+            }
+
+            toast({ title: "¡Inscripción Exitosa!", description: "Se ha generado tu membresía y factura. Puedes verla en tu perfil.", });
+            setClassToEnroll(null);
+            router.push('/profile');
         } catch (e) {
-            toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
+            toast({ title: "Error", description: (e as Error).message, variant: "destructive" });
         }
     };
-    fetchData();
-  }, [toast]);
 
-  const styles = ['Todos', ...allStyles.map(s => s.name)];
-  const levels = ['Todos', ...allLevels.map(l => l.name)];
-  
-  const handleEnrollRequest = (danceClass: DanceClass) => {
-      if (!isAuthenticated) { setIsLoginDialogOpen(true); return; }
-      if (userRole === 'Estudiante') { setClassToEnroll(danceClass); } 
-      else { toast({ title: "Acción no permitida", description: "Solo los estudiantes pueden inscribirse.", variant: "destructive" }); }
-  };
+    const filteredClasses = useMemo(() => {
+        return danceClasses.filter(c => {
+            const styleName = allStyles.find(s => s.id === c.styleId)?.name;
+            const levelName = allLevels.find(l => l.id === c.levelId)?.name;
+            const styleMatch = styleFilter === 'Todos' || styleName === styleFilter;
+            const levelMatch = levelFilter === 'Todos' || levelName === levelFilter;
+            const isVisibleRental = c.type === 'rental' && c.isVisibleToStudents;
+            const isNotHiddenCancelled = !c.isCancelledAndHidden;
+            return styleMatch && levelMatch && isNotHiddenCancelled && (c.type !== 'rental' || isVisibleRental);
+        });
+    }, [styleFilter, levelFilter, danceClasses, allStyles, allLevels]);
 
-  const confirmMonthlyEnroll = () => {
-    if (!classToEnroll || !userId) return;
-    const monthlyPlan = membershipPlans.find(p => p.id === 'unlimited-1');
-    if (!monthlyPlan) { toast({ title: "Error", description: "Plan mensual no encontrado.", variant: "destructive" }); return; }
-    toast({ title: "Inscripción Mensual Iniciada", description: "Se ha generado una factura. Revisa tu perfil.", });
-    setClassToEnroll(null);
-    router.push('/profile');
-  };
+    const weeklyFilteredClasses = filteredClasses.filter(c => c.type === 'recurring');
+    const eventFilteredClasses = filteredClasses.filter(c => ['one-time', 'workshop', 'rental'].includes(c.type));
 
-  const filteredClasses = useMemo(() => {
-    return danceClasses.filter(c => {
-      const styleName = allStyles.find(s => s.id === c.styleId)?.name;
-      const levelName = allLevels.find(l => l.id === c.levelId)?.name;
-      const styleMatch = styleFilter === 'Todos' || styleName === styleFilter;
-      const levelMatch = levelFilter === 'Todos' || levelName === levelFilter;
-      const isVisibleRental = c.type === 'rental' && c.isVisibleToStudents;
-      const isNotHiddenCancelled = !c.isCancelledAndHidden;
-      return styleMatch && levelMatch && isNotHiddenCancelled && (c.type !== 'rental' || isVisibleRental);
-    });
-  }, [styleFilter, levelFilter, danceClasses, allStyles, allLevels]);
-
-  const weeklyFilteredClasses = filteredClasses.filter(c => c.type === 'recurring');
-  const eventFilteredClasses = filteredClasses.filter(c => ['one-time', 'workshop', 'rental'].includes(c.type));
-
-  const filters = (idPrefix: string) => (
-    <div className="flex flex-col md:flex-row gap-4 mb-4 p-4 bg-muted/50 rounded-lg border">
-        <div className="flex-1 min-w-48 space-y-1">
-            <Label htmlFor={`${idPrefix}-style-filter`}>Filtrar por Estilo</Label>
-            <Select value={styleFilter} onValueChange={setStyleFilter}>
-                <SelectTrigger id={`${idPrefix}-style-filter`}><SelectValue /></SelectTrigger>
-                <SelectContent>{styles.map(style => <SelectItem key={style} value={style}>{style}</SelectItem>)}</SelectContent>
-            </Select>
+    const filters = (idPrefix: string) => (
+        <div className="flex flex-col md:flex-row gap-4 mb-4 p-4 bg-muted/50 rounded-lg border">
+            <div className="flex-1 min-w-48 space-y-1">
+                <Label htmlFor={`${idPrefix}-style-filter`}>Filtrar por Estilo</Label>
+                <Select value={styleFilter} onValueChange={setStyleFilter}>
+                    <SelectTrigger id={`${idPrefix}-style-filter`}><SelectValue /></SelectTrigger>
+                    <SelectContent>{styles.map(style => <SelectItem key={style} value={style}>{style}</SelectItem>)}</SelectContent>
+                </Select>
+            </div>
+            <div className="flex-1 min-w-48 space-y-1">
+                <Label htmlFor={`${idPrefix}-level-filter`}>Filtrar por Nivel</Label>
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                    <SelectTrigger id={`${idPrefix}-level-filter`}><SelectValue /></SelectTrigger>
+                    <SelectContent>{levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}</SelectContent>
+                </Select>
+            </div>
         </div>
-        <div className="flex-1 min-w-48 space-y-1">
-            <Label htmlFor={`${idPrefix}-level-filter`}>Filtrar por Nivel</Label>
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
-                <SelectTrigger id={`${idPrefix}-level-filter`}><SelectValue /></SelectTrigger>
-                <SelectContent>{levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}</SelectContent>
-            </Select>
+    );
+
+    if (isLoading || isSettingsLoading) {
+        return (
+            <div className="p-4 md:p-8 space-y-8">
+                <Skeleton className="h-12 w-1/2" />
+                <Skeleton className="h-96 w-full" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="container mx-auto p-4 md:p-8">
+            <div className="space-y-2 mb-8">
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight font-headline">Clases y Horarios</h1>
+                <p className="text-lg text-muted-foreground">Explora nuestras clases regulares, talleres y eventos especiales.</p>
+            </div>
+
+            <LoginRequiredDialog isOpen={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} />
+            <AlertDialog open={!!classToEnroll} onOpenChange={(open) => !open && setClassToEnroll(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Confirmar Inscripción Mensual</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Estás a punto de suscribirte al plan mensual para tener acceso a esta y otras clases. Se generará una factura en tu perfil. ¿Continuar?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={confirmMonthlyEnroll}>Confirmar</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <Tabs defaultValue="clases" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 md:w-fit mb-8">
+                    <TabsTrigger value="clases">Clases</TabsTrigger>
+                    <TabsTrigger value="semanal">Calendario Semanal</TabsTrigger>
+                    <TabsTrigger value="eventos">Eventos</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="clases">
+                    <Card>
+                        <CardHeader><CardTitle>Listado de Clases y Eventos</CardTitle><CardDescription>Actividades disponibles basadas en los filtros.</CardDescription></CardHeader>
+                        <CardContent className="space-y-4">
+                            {filters('list')}
+                            {filteredClasses.length > 0 ? (
+                                filteredClasses.map(c => <ClassListCard key={c.id} danceClass={c} onEnrollRequest={handleEnrollRequest} allStyles={allStyles} allUsers={allUsers} />)
+                            ) : (
+                                <div className="text-center py-16">
+                                    <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+                                    <h3 className="mt-4 text-lg font-medium font-headline">No se encontraron clases</h3>
+                                    <p className="mt-1 text-sm text-muted-foreground">Intenta ajustar tus filtros.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="semanal">
+                    <Card>
+                        <CardHeader><CardTitle>Horario Semanal</CardTitle><CardDescription>Clases recurrentes. Haz clic en un día para ver los detalles.</CardDescription></CardHeader>
+                        <CardContent>
+                            {filters('grid')}
+                            {weeklyFilteredClasses.length > 0 ? (
+                                <ScheduleCalendarView classes={weeklyFilteredClasses} isRecurring={true} allUsers={allUsers} allStyles={allStyles} allLevels={allLevels} />
+                            ) : (
+                                <div className="text-center py-16">
+                                    <Users className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-medium font-headline">No hay clases recurrentes</h3><p className="mt-1 text-sm text-muted-foreground">Ajusta los filtros.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="eventos">
+                    <Card>
+                        <CardHeader><CardTitle>Calendario de Eventos</CardTitle><CardDescription>Talleres y clases únicas. Haz clic en un día para ver los eventos.</CardDescription></CardHeader>
+                        <CardContent>
+                            {eventFilteredClasses.length > 0 ? (
+                                <ScheduleCalendarView classes={eventFilteredClasses} isRecurring={false} allUsers={allUsers} allStyles={allStyles} allLevels={allLevels} />
+                            ) : (
+                                <div className="text-center py-16">
+                                    <Users className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-medium font-headline">No se encontraron eventos</h3><p className="mt-1 text-sm text-muted-foreground">No hay eventos programados.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
+            {settings?.scheduleImages && settings.scheduleImages.length > 0 && (
+                <section className="mt-12">
+                    <Card>
+                        <CardHeader><CardTitle className="flex items-center gap-2 font-headline"><ImageIcon className="h-6 w-6 text-primary" />Horarios en Imagen</CardTitle></CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {settings.scheduleImages.map(image => (
+                                <div key={image.id || image.url} className="overflow-hidden rounded-lg border">
+                                    <NextImage src={image.url} alt={image.alt || 'Horario'} width={600} height={400} className="w-full h-auto object-contain" data-ai-hint="schedule timetable" />
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
         </div>
-    </div>
-  );
-  
-  if (isLoading || isSettingsLoading) {
-      return (
-          <div className="p-4 md:p-8 space-y-8">
-              <Skeleton className="h-12 w-1/2" />
-              <Skeleton className="h-96 w-full" />
-          </div>
-      )
-  }
-
-  return (
-    <div className="container mx-auto p-4 md:p-8">
-      <div className="space-y-2 mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight font-headline">Clases y Horarios</h1>
-        <p className="text-lg text-muted-foreground">Explora nuestras clases regulares, talleres y eventos especiales.</p>
-      </div>
-
-      <LoginRequiredDialog isOpen={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} />
-      <AlertDialog open={!!classToEnroll} onOpenChange={(open) => !open && setClassToEnroll(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader><AlertDialogTitle>Confirmar Inscripción Mensual</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Estás a punto de suscribirte al plan mensual para tener acceso a esta y otras clases. Se generará una factura en tu perfil. ¿Continuar?
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={confirmMonthlyEnroll}>Confirmar</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-        <Tabs defaultValue="clases" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 md:w-fit mb-8">
-                <TabsTrigger value="clases">Clases</TabsTrigger>
-                <TabsTrigger value="semanal">Calendario Semanal</TabsTrigger>
-                <TabsTrigger value="eventos">Eventos</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="clases">
-                <Card>
-                    <CardHeader><CardTitle>Listado de Clases y Eventos</CardTitle><CardDescription>Actividades disponibles basadas en los filtros.</CardDescription></CardHeader>
-                    <CardContent className="space-y-4">
-                       {filters('list')}
-                       {filteredClasses.length > 0 ? (
-                            filteredClasses.map(c => <ClassListCard key={c.id} danceClass={c} onEnrollRequest={handleEnrollRequest} allStyles={allStyles} allUsers={allUsers} />)
-                        ) : (
-                             <div className="text-center py-16">
-                                <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <h3 className="mt-4 text-lg font-medium font-headline">No se encontraron clases</h3>
-                                <p className="mt-1 text-sm text-muted-foreground">Intenta ajustar tus filtros.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="semanal">
-                <Card>
-                    <CardHeader><CardTitle>Horario Semanal</CardTitle><CardDescription>Clases recurrentes. Haz clic en un día para ver los detalles.</CardDescription></CardHeader>
-                    <CardContent>
-                        {filters('grid')}
-                        {weeklyFilteredClasses.length > 0 ? (
-                            <ScheduleCalendarView classes={weeklyFilteredClasses} isRecurring={true} allUsers={allUsers} allStyles={allStyles} allLevels={allLevels}/>
-                        ) : (
-                            <div className="text-center py-16">
-                                <Users className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-medium font-headline">No hay clases recurrentes</h3><p className="mt-1 text-sm text-muted-foreground">Ajusta los filtros.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="eventos">
-                <Card>
-                    <CardHeader><CardTitle>Calendario de Eventos</CardTitle><CardDescription>Talleres y clases únicas. Haz clic en un día para ver los eventos.</CardDescription></CardHeader>
-                    <CardContent>
-                         {eventFilteredClasses.length > 0 ? (
-                            <ScheduleCalendarView classes={eventFilteredClasses} isRecurring={false} allUsers={allUsers} allStyles={allStyles} allLevels={allLevels}/>
-                        ) : (
-                            <div className="text-center py-16">
-                                <Users className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-medium font-headline">No se encontraron eventos</h3><p className="mt-1 text-sm text-muted-foreground">No hay eventos programados.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
-        
-        {settings?.scheduleImages && settings.scheduleImages.length > 0 && (
-            <section className="mt-12">
-                <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2 font-headline"><ImageIcon className="h-6 w-6 text-primary" />Horarios en Imagen</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {settings.scheduleImages.map(image => (
-                            <div key={image.id || image.url} className="overflow-hidden rounded-lg border">
-                                <NextImage src={image.url} alt={image.alt || 'Horario'} width={600} height={400} className="w-full h-auto object-contain" data-ai-hint="schedule timetable" />
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            </section>
-        )}
-    </div>
-  );
+    );
 }
