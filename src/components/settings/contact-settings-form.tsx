@@ -14,20 +14,20 @@ import type { AcademySettings } from "@/lib/types";
 import { useEffect } from "react";
 
 const formSchema = z.object({
-  contactEmail: z.string().email("Introduce un email válido."),
-  address: z.string().optional(),
-  phone: z.string().optional(),
-  whatsappPhone: z.string().optional(),
-  instagramUrl: z.string().url("URL de Instagram inválida.").or(z.literal('')).optional(),
-  facebookUrl: z.string().url("URL de Facebook inválida.").or(z.literal('')).optional(),
-  tiktokUrl: z.string().url("URL de TikTok inválida.").or(z.literal('')).optional(),
-  openingHours: z.string().optional(),
+    contactEmail: z.string().email("Introduce un email válido."),
+    address: z.string().optional(),
+    phone: z.string().optional(),
+    whatsappPhone: z.string().optional(),
+    instagramUrl: z.string().optional(),
+    facebookUrl: z.string().optional(),
+    tiktokUrl: z.string().optional(),
+    openingHours: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface Props {
-  settings: AcademySettings;
+    settings: AcademySettings;
 }
 
 export function ContactSettingsForm({ settings }: Props) {

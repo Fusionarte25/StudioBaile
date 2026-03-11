@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 
 'use server';
 import { NextResponse } from 'next/server';
@@ -5,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { paymentDetailsJsonSchema } from '@/lib/types';
+
 
 
 const userCreateSchema = z.object({

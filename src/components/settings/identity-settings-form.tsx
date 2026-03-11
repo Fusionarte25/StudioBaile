@@ -54,7 +54,25 @@ export function IdentitySettingsForm({ settings }: Props) {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                form.setValue(fieldName, reader.result as string, { shouldDirty: true, shouldValidate: true });
+                const img = document.createElement('img');
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max_size = fieldName === 'faviconUrl' ? 128 : 500;
+                    if (width > max_size || height > max_size) {
+                        const ratio = Math.min(max_size / width, max_size / height);
+                        width = width * ratio;
+                        height = height * ratio;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/webp', 0.8);
+                    form.setValue(fieldName, compressedBase64, { shouldDirty: true, shouldValidate: true });
+                };
+                img.src = reader.result as string;
             };
             reader.readAsDataURL(file);
         }

@@ -78,10 +78,7 @@ export default function AdminUsersPage() {
             const res = await fetch('/api/users');
             if (res.ok) {
                 const fetchedUsers = await res.json();
-                const detailedUsers = await Promise.all(
-                    fetchedUsers.map((u: User) => fetch(`/api/users/${u.id}`).then(res => res.json()))
-                );
-                setUsers(detailedUsers);
+                setUsers(fetchedUsers);
             } else {
                 toast({ title: "Error", description: "No se pudieron cargar los usuarios.", variant: "destructive" });
             }
@@ -253,7 +250,25 @@ export default function AdminUsersPage() {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                form.setValue('avatar', reader.result as string);
+                const img = document.createElement('img');
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max_size = 250;
+                    if (width > max_size || height > max_size) {
+                        const ratio = Math.min(max_size / width, max_size / height);
+                        width = width * ratio;
+                        height = height * ratio;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/webp', 0.8);
+                    form.setValue('avatar', compressedBase64);
+                };
+                img.src = reader.result as string;
             };
             reader.readAsDataURL(file);
         }
