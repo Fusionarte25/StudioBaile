@@ -90,6 +90,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 });
     }
     console.error('Error creating user:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error', debugMessage: String(error), debugStack: (error as Error).stack }, { status: 500 });
   }
 }
