@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-'use server';
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
