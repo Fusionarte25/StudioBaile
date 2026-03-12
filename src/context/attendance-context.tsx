@@ -34,8 +34,14 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const [classInstances, setClassInstances] = useState<ClassInstance[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, ClassAttendanceRecord>>({});
 
+  const pendingFetches = React.useRef<Set<string>>(new Set());
+
   // Sync attendance with server
   const fetchAttendance = useCallback(async (classId: string, date: string) => {
+    const instanceId = `${classId}-${date}`;
+    if (pendingFetches.current.has(instanceId)) return;
+    pendingFetches.current.add(instanceId);
+
     try {
       const response = await fetch(`/api/attendance?classId=${classId}&date=${date}`);
       if (response.ok) {
@@ -44,7 +50,6 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           studentId: r.studentId,
           present: r.status === 'presente'
         }));
-        const instanceId = `${classId}-${date}`;
         setAttendanceRecords(prev => ({
           ...prev,
           [instanceId]: {
@@ -57,6 +62,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Failed to fetch attendance:", error);
+    } finally {
+      pendingFetches.current.delete(instanceId);
     }
   }, []);
 
@@ -64,59 +71,69 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     if (!allClasses || allClasses.length === 0) return;
 
     const teacherClasses = allClasses.filter(c => c.teacherIds?.includes(teacherId));
-    const newInstances: ClassInstance[] = [];
     const interval = eachDayOfInterval({ start, end });
-    const instanceIdsToFetch: {id: string, date: string}[] = [];
+    const instanceIdsFound = new Set<string>();
 
-    interval.forEach(day => {
-      const dayOfWeekName = daysOfWeekMap[getDay(day)];
-      const dateStr = format(day, 'yyyy-MM-dd');
+    setClassInstances(prev => {
+      const newInstancesToAdd: ClassInstance[] = [];
+      
+      interval.forEach(day => {
+        const dayOfWeekName = daysOfWeekMap[getDay(day)];
+        const dateStr = format(day, 'yyyy-MM-dd');
 
-      teacherClasses.forEach(c => {
-        let shouldAdd = false;
-        if (c.type === 'recurring' && c.day === dayOfWeekName) {
-          shouldAdd = true;
-        } else if (c.date && isSameDay(parseISO(c.date), day)) {
-          shouldAdd = true;
-        }
-
-        if (shouldAdd) {
-          const instanceId = `${c.id}-${dateStr}`;
-
-          if (!attendanceRecords[instanceId]) {
-            instanceIdsToFetch.push({id: c.id, date: dateStr});
+        teacherClasses.forEach(c => {
+          let shouldAdd = false;
+          if (c.type === 'recurring' && c.day === dayOfWeekName) {
+            shouldAdd = true;
+          } else if (c.date && isSameDay(parseISO(c.date), day)) {
+            shouldAdd = true;
           }
 
-          if (!classInstances.some(inst => inst.instanceId === instanceId)) {
-            const record = attendanceRecords[instanceId];
-            newInstances.push({
-              ...c,
-              instanceId,
-              date: dateStr,
-              status: record ? record.status : 'scheduled',
-            });
+          if (shouldAdd) {
+            const instanceId = `${c.id}-${dateStr}`;
+            instanceIdsFound.add(instanceId);
+
+            if (!prev.some(inst => inst.instanceId === instanceId)) {
+                newInstancesToAdd.push({
+                  ...c,
+                  instanceId,
+                  date: dateStr,
+                  status: 'scheduled', // Default, updated by attendanceRecords later
+                });
+            }
           }
-        }
-      });
-    });
-
-    // Batch a few at a time or just avoid the loop-fetch
-    instanceIdsToFetch.forEach(({id, date}) => fetchAttendance(id, date));
-
-    if (newInstances.length > 0) {
-      setClassInstances(prev => {
-        const existingIds = new Set(prev.map(i => i.instanceId));
-        const filteredNew = newInstances.filter(i => !existingIds.has(i.instanceId));
-        if (filteredNew.length === 0) return prev;
-        
-        const updated = [...prev, ...filteredNew].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        return updated.map(inst => {
-          const rec = attendanceRecords[inst.instanceId];
-          return rec ? { ...inst, status: rec.status } : inst;
         });
       });
-    }
-  }, [attendanceRecords, classInstances, fetchAttendance]);
+
+      if (newInstancesToAdd.length === 0) return prev;
+      return [...prev, ...newInstancesToAdd].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    });
+
+    // Trigger fetches for any instances we found but don't have records for
+    instanceIdsFound.forEach(instanceId => {
+        if (!attendanceRecords[instanceId]) {
+            const [classId, date] = instanceId.split(/-(.+)/); // Split only on first hyphen
+            fetchAttendance(classId, date);
+        }
+    });
+
+  }, [attendanceRecords, fetchAttendance]);
+
+  // Sync statuses of instances with records
+  React.useEffect(() => {
+    setClassInstances(prev => {
+        let changed = false;
+        const next = prev.map(inst => {
+            const rec = attendanceRecords[inst.instanceId];
+            if (rec && rec.status !== inst.status) {
+                changed = true;
+                return { ...inst, status: rec.status };
+            }
+            return inst;
+        });
+        return changed ? next : prev;
+    });
+  }, [attendanceRecords]);
 
   const confirmClass = useCallback(async (classId: string, date: string) => {
     const instanceId = `${classId}-${date}`;

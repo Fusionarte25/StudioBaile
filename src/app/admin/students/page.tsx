@@ -404,7 +404,7 @@ export default function AdminStudentsPage() {
                             </Avatar>
                             <div>
                                 <DialogTitle className="text-2xl font-headline">{form.getValues('name')}</DialogTitle>
-                                <DialogDescription>{form.getValues('email')} - Miembro desde {format(parseISO(selectedStudent.joined), 'PPP', { locale: es })}</DialogDescription>
+                                <DialogDescription>{form.getValues('email')} {selectedStudent.joined ? `- Miembro desde ${format(parseISO(selectedStudent.joined), 'PPP', { locale: es })}` : ''}</DialogDescription>
                             </div>
                         </div>
                         <Button variant={isEditing ? "default" : "outline"} size="icon" onClick={() => setIsEditing(!isEditing)}>
@@ -502,7 +502,7 @@ export default function AdminStudentsPage() {
                                     <div><p className="font-medium">Nombre</p><p>{selectedStudent.name}</p></div>
                                     <div><p className="font-medium">Email</p><p>{selectedStudent.email}</p></div>
                                     <div><p className="font-medium">Móvil</p><p>{selectedStudent.mobile || 'No especificado'}</p></div>
-                                    <div><p className="font-medium">Fecha de Nacimiento</p><p>{selectedStudent.dob ? format(parseISO(selectedStudent.dob), 'PPP', {locale: es}) : 'No especificado'}</p></div>
+                                    <div><p className="font-medium">Fecha de Nacimiento</p><p>{(selectedStudent.dob && selectedStudent.dob.length > 5) ? format(parseISO(selectedStudent.dob), 'PPP', {locale: es}) : 'No especificado'}</p></div>
                                 </CardContent>
                             </Card>
                             <Card>

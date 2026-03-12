@@ -36,7 +36,7 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
 
   useEffect(() => {
     if (initialTransactions) {
-      setTransactions(initialTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setTransactions([...initialTransactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setIsLoading(false);
       return;
     }
