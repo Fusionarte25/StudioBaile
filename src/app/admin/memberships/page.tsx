@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
@@ -31,8 +31,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { Prisma } from '@prisma/client';
-
 
 // This schema is specifically for the form, where `features` is a single string from a textarea.
 const formSchema = z.object({
@@ -111,6 +109,10 @@ const planToForm = (plan: MembershipPlan): MembershipFormValues => {
     endDate: plan.endDate || undefined,
     // Ensure priceTiers is always an array for the form
     priceTiers: Array.isArray(plan.priceTiers) ? plan.priceTiers : [],
+    registrationFee: plan.registrationFee ?? 0,
+    isUnlimitedCourses: plan.isUnlimitedCourses ?? true,
+    maxCourses: plan.maxCourses ?? 1,
+    targetMonth: plan.targetMonth ?? undefined,
   };
 
   return baseData as MembershipFormValues;
@@ -174,7 +176,7 @@ export default function AdminMembershipsPage() {
 
   const accessType = form.watch('accessType');
   const validityType = form.watch('validityType');
-  const allClassIds = danceClasses.map(c => c.id);
+  const allClassIds = useMemo(() => danceClasses.map(c => c.id), [danceClasses]);
 
   const handleOpenDialog = (plan: MembershipPlan | null = null) => {
     setEditingPlan(plan);
@@ -193,7 +195,10 @@ export default function AdminMembershipsPage() {
         durationValue: 1,
         allowedClasses: [],
         visibility: 'public',
-        priceTiers: [],
+        registrationFee: 0,
+        isUnlimitedCourses: true,
+        maxCourses: 1,
+        targetMonth: undefined,
       });
     }
     setIsDialogOpen(true);

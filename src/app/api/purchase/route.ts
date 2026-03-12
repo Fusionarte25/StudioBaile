@@ -52,12 +52,18 @@ export async function POST(request: NextRequest) {
       classCount: planDataFromDb.classCount ?? undefined,
       durationValue: planDataFromDb.durationValue ?? undefined,
       validityMonths: planDataFromDb.validityMonths ?? undefined,
-      startDate: planDataFromDb.startDate ?? undefined,
-      endDate: planDataFromDb.endDate ?? undefined,
+      startDate: planDataFromDb.startDate ? new Date(planDataFromDb.startDate) : undefined,
+      endDate: planDataFromDb.endDate ? new Date(planDataFromDb.endDate) : undefined,
       // Include new fields
       isUnlimitedCourses: planDataFromDb.isUnlimitedCourses ?? false,
       maxCourses: planDataFromDb.maxCourses ?? undefined,
       targetMonth: planDataFromDb.targetMonth ?? undefined,
+      features: (() => {
+        try { return JSON.parse(planDataFromDb.features || '[]'); } catch { return []; }
+      })(),
+      allowedClasses: (() => {
+        try { return JSON.parse(planDataFromDb.allowedClasses || '[]'); } catch { return []; }
+      })(),
     };
 
     const plan = membershipPlanZodSchema.parse(planToValidate);

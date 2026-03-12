@@ -20,9 +20,33 @@ const classSchema = z.object({
 export async function GET() {
   try {
     const classes = await prisma.danceClass.findMany({
-      include: {
-        teachers: true,
-        enrolledStudents: true,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        day: true,
+        date: true,
+        time: true,
+        room: true,
+        duration: true,
+        capacity: true,
+        cancellationPolicyHours: true,
+        status: true,
+        isCancelledAndHidden: true,
+        isVisibleToStudents: true,
+        rentalContact: true,
+        rentalPrice: true,
+        workshopPaymentType: true,
+        workshopPaymentValue: true,
+        styleId: true,
+        levelId: true,
+        teachers: {
+          select: { id: true }
+        },
+        enrolledStudents: {
+          select: { id: true }
+        }
       }
     });
     const response = classes.map(c => ({

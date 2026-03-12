@@ -26,10 +26,24 @@ const userCreateSchema = z.object({
 export async function GET() {
   try {
     const users = await prisma.user.findMany({
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        joined: true,
+        avatar: true,
+        dob: true,
+        mobile: true,
+        isVisibleToStudents: true,
+        isPartner: true,
+        bio: true,
+        specialties: true,
+        paymentDetailsJson: true,
+        registrationPaidYear: true,
       }
     });
-    const parsedUsers = users.map(({ password, specialties, paymentDetailsJson, ...user }) => {
+    const parsedUsers = users.map(({ specialties, paymentDetailsJson, ...user }) => {
       return {
         ...user,
         specialties: (() => {

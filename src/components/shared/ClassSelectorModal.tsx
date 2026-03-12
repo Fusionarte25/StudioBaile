@@ -66,9 +66,11 @@ export function ClassSelectorModal({ plan, isOpen, onClose, onConfirm, overrideC
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [allClasses, setAllClasses] = useState<DanceClass[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [hasLoaded, setHasLoaded] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
+        if (!isOpen || hasLoaded) return;
         const fetchData = async () => {
             try {
                 const [classesRes, usersRes] = await Promise.all([
@@ -77,12 +79,13 @@ export function ClassSelectorModal({ plan, isOpen, onClose, onConfirm, overrideC
                 ]);
                 if(classesRes.ok) setAllClasses(await classesRes.json());
                 if(usersRes.ok) setAllUsers(await usersRes.json());
+                setHasLoaded(true);
             } catch(e) {
                 toast({title: "Error", description: "No se pudieron cargar los datos de las clases."})
             }
         }
         fetchData();
-    }, [toast]);
+    }, [isOpen, hasLoaded, toast]);
 
     useEffect(() => {
         if (isOpen) {
@@ -151,6 +154,12 @@ export function ClassSelectorModal({ plan, isOpen, onClose, onConfirm, overrideC
         return 0;
     }, [plan, overrideClassCount]);
 
+    const usersMap = useMemo(() => {
+        const map = new Map<number, User>();
+        allUsers.forEach(u => map.set(u.id, u));
+        return map;
+    }, [allUsers]);
+
     const handleSelectClass = (classId: string, date: Date) => {
         const dateStr = format(date, 'yyyy-MM-dd');
         setSelectedClasses(prev => {
@@ -210,7 +219,7 @@ export function ClassSelectorModal({ plan, isOpen, onClose, onConfirm, overrideC
                                         const dateStr = format(selectedDate!, 'yyyy-MM-dd');
                                         const isSelected = selectedClasses.some(sc => sc.classId === c.id && sc.date === dateStr);
                                         const isDisabled = !isSelected && selectedClasses.length >= classCount;
-                                        const teacherNames = allUsers.filter(u => c.teacherIds.includes(u.id)).map(t => t.name).join(', ');
+                                        const teacherNames = c.teacherIds.map(id => usersMap.get(id)?.name).filter(Boolean).join(', ');
                                         return (
                                             <div key={`${c.id}-${dateStr}`} className={cn("flex items-start space-x-3 rounded-md border p-3", isDisabled && "opacity-50 cursor-not-allowed", isSelected && "bg-primary/10 border-primary/50")}>
                                                 <Checkbox id={`${c.id}-${dateStr}`} checked={isSelected} onCheckedChange={() => handleSelectClass(c.id, selectedDate!)} disabled={isDisabled} className="mt-1" />

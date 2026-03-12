@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, Users, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type CourseSelectorModalProps = {
     plan: MembershipPlan;
@@ -23,12 +24,13 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
     const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
     const [allClasses, setAllClasses] = useState<DanceClass[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [hasLoaded, setHasLoaded] = useState(false);
     const { toast } = useToast();
 
     const maxCourses = plan.maxCourses || 1;
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || hasLoaded) return;
         
         const fetchData = async () => {
             setIsLoading(true);
@@ -36,13 +38,8 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
                 const res = await fetch('/api/classes');
                 if(res.ok) {
                     const data: DanceClass[] = await res.json();
-                    // Filter classes allowed by the plan
-                    if (plan.allowedClasses && plan.allowedClasses.length > 0) {
-                        setAllClasses(data.filter(c => plan.allowedClasses?.includes(c.id)));
-                    } else {
-                        // If no restrictions in plan, show all recurring/workshops
-                        setAllClasses(data.filter(c => c.type !== 'rental' && !c.isCancelledAndHidden));
-                    }
+                    setAllClasses(data);
+                    setHasLoaded(true);
                 }
             } catch(e) {
                 toast({title: "Error", description: "No se pudieron cargar las clases."})
@@ -51,8 +48,27 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
             }
         }
         fetchData();
-        setSelectedClassIds([]);
-    }, [isOpen, plan, toast]);
+    }, [isOpen, hasLoaded, toast]);
+
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedClassIds([]);
+        }
+    }, [isOpen]);
+
+    const filteredClasses = useMemo(() => {
+        if (!allClasses.length) return [];
+        
+        let filtered = allClasses;
+        
+        // Filter classes allowed by the plan
+        if (plan.allowedClasses && plan.allowedClasses.length > 0) {
+            filtered = filtered.filter(c => plan.allowedClasses?.includes(c.id));
+        }
+        
+        // Always filter recurring and not hidden
+        return filtered.filter(c => c.type !== 'rental' && !c.isCancelledAndHidden);
+    }, [allClasses, plan.allowedClasses]);
 
     const handleToggleClass = (classId: string) => {
         setSelectedClassIds(prev => {
@@ -87,10 +103,12 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
 
                 <div className="flex-grow overflow-y-auto py-4">
                     {isLoading ? (
-                        <div className="flex items-center justify-center py-12">Cargando cursos disponibles...</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+                        </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {allClasses.map(c => {
+                            {filteredClasses.map(c => {
                                 const isSelected = selectedClassIds.includes(c.id);
                                 const isMaxed = selectedClassIds.length >= maxCourses && !isSelected;
                                 return (
@@ -136,7 +154,7 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
                             })}
                         </div>
                     )}
-                    {allClasses.length === 0 && !isLoading && (
+                    {filteredClasses.length === 0 && !isLoading && (
                         <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
                             No hay cursos específicos asignados a este plan o no se encontraron cursos activos.
                         </div>

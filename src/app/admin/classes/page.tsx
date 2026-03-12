@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -147,8 +147,26 @@ export default function AdminClassesPage() {
     fetchData();
   }, [searchParams]);
 
+  // Optimized lookups
+  const styleMap = useMemo(() => {
+    const map = new Map<string, DanceStyle>();
+    danceStyles.forEach(s => map.set(s.id, s));
+    return map;
+  }, [danceStyles]);
 
-  const teachers = users.filter(u => u.role === 'Profesor' || u.role === 'Socio');
+  const levelMap = useMemo(() => {
+    const map = new Map<string, DanceLevel>();
+    danceLevels.forEach(l => map.set(l.id, l));
+    return map;
+  }, [danceLevels]);
+
+  const usersMap = useMemo(() => {
+    const map = new Map<number, User>();
+    users.forEach(u => map.set(u.id, u));
+    return map;
+  }, [users]);
+
+  const teachers = useMemo(() => users.filter(u => u.role === 'Profesor' || u.role === 'Socio'), [users]);
 
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classFormSchema),
@@ -169,9 +187,9 @@ export default function AdminClassesPage() {
   const eventType = form.watch('type');
   const workshopPaymentType = form.watch('workshopPaymentType');
 
-  const getStyleName = (id: string) => danceStyles.find(s => s.id === id)?.name || id;
-  const getLevelName = (id: string) => danceLevels.find(l => l.id === id)?.name || id;
-  const getTeacherNames = (ids: number[]) => users.filter(u => ids.includes(u.id)).map(t => t.name).join(', ');
+  const getStyleName = (id: string) => styleMap.get(id)?.name || id;
+  const getLevelName = (id: string) => levelMap.get(id)?.name || id;
+  const getTeacherNames = (ids: number[]) => ids.map(id => usersMap.get(id)?.name).filter(Boolean).join(', ');
 
   const handleOpenDialog = (danceClass: DanceClass | null = null) => {
     setEditingClass(danceClass);

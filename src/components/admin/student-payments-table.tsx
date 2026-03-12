@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { StudentPayment, User, MembershipPlan } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -52,6 +52,18 @@ export function StudentPaymentsTable({ payments, onPaymentsUpdate, users, member
   });
 
   const watchedStatus = editForm.watch('status');
+  
+  const usersMap = useMemo(() => {
+    const map = new Map<number, User>();
+    users.forEach(u => map.set(u.id, u));
+    return map;
+  }, [users]);
+
+  const planMap = useMemo(() => {
+    const map = new Map<string, MembershipPlan>();
+    membershipPlans.forEach(p => p.id && map.set(p.id, p));
+    return map;
+  }, [membershipPlans]);
 
   useEffect(() => {
     if (watchedStatus === 'paid' && editingPayment) {
@@ -59,8 +71,8 @@ export function StudentPaymentsTable({ payments, onPaymentsUpdate, users, member
     }
   }, [watchedStatus, editingPayment, editForm]);
   
-  const getStudentName = (id: number) => users.find(u => u.id === id)?.name || 'Desconocido';
-  const getPlanName = (id: string) => membershipPlans.find(p => p.id === id)?.title || 'Desconocido';
+  const getStudentName = (id: number) => usersMap.get(id)?.name || 'Desconocido';
+  const getPlanName = (id: string) => planMap.get(id)?.title || 'Desconocido';
 
   const handleOpenEditDialog = (payment: StudentPayment) => {
     setEditingPayment(payment);

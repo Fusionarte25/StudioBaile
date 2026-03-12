@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { User, DanceClass, StudentMembership, MembershipPlan } from '@/lib/types';
 import { format, isBefore, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -98,19 +98,37 @@ export default function AdminStudentsPage() {
         fetchData();
     }, []);
 
-
+    // Optimized lookups
     const form = useForm<StudentEditFormValues>({
         resolver: zodResolver(studentEditFormSchema),
     });
-    
-    const getTeacherNames = (ids: number[]) => users.filter(u => ids.includes(u.id)).map(t => t.name).join(', ');
+
+    const membershipMap = useMemo(() => {
+        const map = new Map<number, StudentMembership>();
+        studentMemberships.forEach(m => map.set(m.userId, m));
+        return map;
+    }, [studentMemberships]);
+
+    const planMap = useMemo(() => {
+        const map = new Map<string, MembershipPlan>();
+        membershipPlans.forEach(p => p.id && map.set(p.id, p));
+        return map;
+    }, [membershipPlans]);
+
+    const usersMap = useMemo(() => {
+        const map = new Map<number, User>();
+        users.forEach(u => map.set(u.id, u));
+        return map;
+    }, [users]);
+
+    const getTeacherNames = (ids: number[]) => ids.map(id => usersMap.get(id)?.name).filter(Boolean).join(', ');
 
     const watchedPlanId = form.watch('membershipPlanId');
-    const selectedPlanDetails = membershipPlans.find(p => p.id === watchedPlanId);
+    const selectedPlanDetails = planMap.get(watchedPlanId || '');
 
     const handleViewProfile = (student: User) => {
         setSelectedStudent(student);
-        const membership = studentMemberships.find(sm => sm.userId === student.id);
+        const membership = membershipMap.get(student.id);
         
         form.reset({
             id: student.id,
@@ -167,12 +185,12 @@ export default function AdminStudentsPage() {
     }
 
     const getStudentMembershipInfo = (studentId: number) => {
-        const membership = studentMemberships.find(sm => sm.userId === studentId);
+        const membership = membershipMap.get(studentId);
         if (!membership) {
             return { planTitle: 'Sin membresía', status: 'Inactiva', statusColor: 'text-red-500' };
         }
         
-        const plan = membershipPlans.find(p => p.id === membership.planId);
+        const plan = planMap.get(membership.planId);
         const endDate = parseISO(membership.endDate);
         const isActive = isBefore(new Date(), endDate);
 

@@ -69,13 +69,25 @@ export default function AdminPaymentsPage() {
 
   const canCreate = userRole === 'Admin' || userRole === 'Administrativo' || userRole === 'Socio';
 
-  const students = users.filter(u => u.role === 'Estudiante');
+  const students = useMemo(() => users.filter(u => u.role === 'Estudiante'), [users]);
   
+  const usersMap = useMemo(() => {
+    const map = new Map<number, User>();
+    users.forEach(u => map.set(u.id, u));
+    return map;
+  }, [users]);
+
+  const planMap = useMemo(() => {
+    const map = new Map<string, MembershipPlan>();
+    membershipPlans.forEach(p => p.id && map.set(p.id, p));
+    return map;
+  }, [membershipPlans]);
+
   const partnerClassIds = useMemo(() => {
-    const partners = users.filter(u => u.isPartner);
+    const partnerIds = new Set(users.filter(u => u.isPartner).map(u => u.id));
     const ids = new Set<string>();
     danceClasses.forEach(c => {
-      if (c.teacherIds.some(tid => partners.some(p => p.id === tid))) {
+      if (c.teacherIds.some(tid => partnerIds.has(tid))) {
         ids.add(c.id);
       }
     });
@@ -84,7 +96,7 @@ export default function AdminPaymentsPage() {
 
   const studioPayments = useMemo(() => {
     return studentPayments.filter(p => {
-      const plan = membershipPlans.find(mp => mp.id === p.planId);
+      const plan = planMap.get(p.planId);
       if (!plan) return true;
 
       if (plan.accessType === 'time_pass') return true; 
@@ -99,7 +111,7 @@ export default function AdminPaymentsPage() {
       
       return false;
     });
-  }, [studentPayments, membershipPlans, partnerClassIds]);
+  }, [studentPayments, planMap, partnerClassIds]);
 
 
   const newInvoiceForm = useForm<NewInvoiceFormValues>({
