@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
-import type { User, DanceClass, Transaction, StudentPayment } from '@/lib/types';
+import type { User, DanceClass, Transaction, StudentPayment, MembershipPlan } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
@@ -23,22 +23,25 @@ export default function AdminFinancesPage() {
   const [danceClasses, setDanceClasses] = useState<DanceClass[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [studentPayments, setStudentPayments] = useState<StudentPayment[]>([]);
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, classesRes, transRes, paymentsRes] = await Promise.all([
+        const [usersRes, classesRes, transRes, paymentsRes, plansRes] = await Promise.all([
           fetch('/api/users'),
           fetch('/api/classes'),
           fetch('/api/transactions'),
           fetch('/api/payments'),
+          fetch('/api/memberships'),
         ]);
 
         if (usersRes.ok) setUsers(await usersRes.json());
         if (classesRes.ok) setDanceClasses(await classesRes.json());
         if (transRes.ok) setTransactions(await transRes.json());
         if (paymentsRes.ok) setStudentPayments(await paymentsRes.json());
+        if (plansRes.ok) setMembershipPlans(await plansRes.json());
 
       } catch (error) {
         console.error("Error fetching finance data:", error);
@@ -118,10 +121,17 @@ export default function AdminFinancesPage() {
                       <CardTitle>Libro de Transacciones (General)</CardTitle>
                       <CardDescription>Otros ingresos y egresos operativos.</CardDescription>
                     </CardHeader>
-                    <CardContent><IncomeExpenseLedger /></CardContent>
+                    <CardContent><IncomeExpenseLedger transactions={transactions} /></CardContent>
                 </Card>
                 <div className="lg:col-span-3">
-                    <TeacherPayroll mode="studio_expenses" />
+                    <TeacherPayroll 
+                        mode="studio_expenses" 
+                        users={users} 
+                        danceClasses={danceClasses} 
+                        membershipPlans={membershipPlans} 
+                        studentPayments={studentPayments} 
+                        onPaymentsUpdate={setStudentPayments}
+                    />
                 </div>
             </div>
         </TabsContent>
@@ -143,12 +153,20 @@ export default function AdminFinancesPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {selectedPartnerId && (
-                        <TeacherPayroll mode="partner_income" partnerId={parseInt(selectedPartnerId, 10)} />
+                        <TeacherPayroll 
+                            mode="partner_income" 
+                            partnerId={parseInt(selectedPartnerId, 10)} 
+                            users={users} 
+                            danceClasses={danceClasses} 
+                            membershipPlans={membershipPlans} 
+                            studentPayments={studentPayments} 
+                            onPaymentsUpdate={setStudentPayments}
+                        />
                     )}
                 </CardContent>
             </Card>
         </TabsContent>
-    </Tabs>
+     </Tabs>
   );
 
   const AdministrativeView = () => (
@@ -173,7 +191,7 @@ export default function AdminFinancesPage() {
                   <CardTitle>Libro de Transacciones (General)</CardTitle>
                   <CardDescription>Otros ingresos y egresos operativos.</CardDescription>
                 </CardHeader>
-                <CardContent><IncomeExpenseLedger /></CardContent>
+                <CardContent><IncomeExpenseLedger transactions={transactions} /></CardContent>
             </Card>
         </div>
     </div>
@@ -212,13 +230,28 @@ export default function AdminFinancesPage() {
                     <CardHeader>
                          <CardTitle>Libro de Transacciones del Estudio</CardTitle>
                     </CardHeader>
-                    <CardContent><IncomeExpenseLedger /></CardContent>
+                    <CardContent><IncomeExpenseLedger transactions={transactions} /></CardContent>
                 </Card>
-                <TeacherPayroll mode="studio_expenses" />
+                <TeacherPayroll 
+                    mode="studio_expenses" 
+                    users={users} 
+                    danceClasses={danceClasses} 
+                    membershipPlans={membershipPlans} 
+                    studentPayments={studentPayments} 
+                    onPaymentsUpdate={setStudentPayments}
+                />
             </div>
         </TabsContent>
         <TabsContent value="personal" className="mt-6 space-y-8">
-            <TeacherPayroll mode="partner_income" partnerId={userId} />
+            <TeacherPayroll 
+                mode="partner_income" 
+                partnerId={userId} 
+                users={users} 
+                danceClasses={danceClasses} 
+                membershipPlans={membershipPlans} 
+                studentPayments={studentPayments} 
+                onPaymentsUpdate={setStudentPayments}
+            />
         </TabsContent>
     </Tabs>
   );

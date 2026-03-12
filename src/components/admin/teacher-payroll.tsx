@@ -38,18 +38,42 @@ type TeacherPayrollProps = {
     mode: 'studio_expenses' | 'partner_income' | 'teacher_income';
     partnerId?: number | null; // For partner income
     teacherId?: number | null; // For individual teacher income
+    // Optional data to avoid redundant fetches
+    users?: User[];
+    danceClasses?: DanceClass[];
+    membershipPlans?: MembershipPlan[];
+    studentPayments?: StudentPayment[];
+    onPaymentsUpdate?: (payments: StudentPayment[]) => void;
 };
 
-export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partnerId, teacherId }: TeacherPayrollProps) {
+export const TeacherPayroll = React.memo(function TeacherPayroll({ 
+    mode, 
+    partnerId, 
+    teacherId,
+    users: initialUsers,
+    danceClasses: initialClasses,
+    membershipPlans: initialPlans,
+    studentPayments: initialPayments,
+    onPaymentsUpdate
+}: TeacherPayrollProps) {
     const { generateInstancesForTeacher, classInstances } = useAttendance();
-    const [studentPayments, setStudentPayments] = useState<StudentPayment[]>([]);
+    const [studentPayments, setStudentPayments] = useState<StudentPayment[]>(initialPayments || []);
 
-    const [users, setUsers] = useState<User[]>([]);
-    const [danceClasses, setDanceClasses] = useState<DanceClass[]>([]);
-    const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const updatePayments = (updated: StudentPayment[]) => {
+        setStudentPayments(updated);
+        if (onPaymentsUpdate) onPaymentsUpdate(updated);
+    };
+
+    const [users, setUsers] = useState<User[]>(initialUsers || []);
+    const [danceClasses, setDanceClasses] = useState<DanceClass[]>(initialClasses || []);
+    const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>(initialPlans || []);
+    const [isLoading, setIsLoading] = useState(!initialUsers);
 
     const fetchData = async () => {
+      if (initialUsers && initialClasses && initialPlans && initialPayments) {
+          setIsLoading(false);
+          return;
+      }
       setIsLoading(true);
       try {
         const [usersRes, classesRes, plansRes, paymentsRes] = await Promise.all([
@@ -72,8 +96,16 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (initialUsers) {
+            setUsers(initialUsers);
+            setDanceClasses(initialClasses || []);
+            setMembershipPlans(initialPlans || []);
+            setStudentPayments(initialPayments || []);
+            setIsLoading(false);
+        } else {
+            fetchData();
+        }
+    }, [initialUsers, initialClasses, initialPlans, initialPayments]);
 
     // Generate instances for all relevant teachers when the component mounts
     useEffect(() => {
@@ -95,15 +127,17 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
     const calculation = useMemo(() => {
         if (isLoading) return null;
 
-        const getStudentPaymentData = (studentIds: Set<number>) => {
-            return Array.from(studentIds).map(id => {
-                const student = users.find(u => u.id === id);
-                return studentPayments.find(p => p.studentId === student?.id);
-            }).filter((p): p is StudentPayment => !!p);
-        };
+        const usersMap = new Map<number, User>();
+        users.forEach(u => usersMap.set(u.id, u));
+
+        const classesMap = new Map<string, DanceClass>();
+        danceClasses.forEach(c => classesMap.set(c.id, c));
+
+        const paymentsByStudentMap = new Map<number, StudentPayment>();
+        studentPayments.forEach(p => paymentsByStudentMap.set(p.studentId, p));
         
         const calculateForTeacher = (teacherId: number) => {
-            const teacher = users.find(u => u.id === teacherId);
+            const teacher = usersMap.get(teacherId);
             if (!teacher) return null;
 
             const classesTaughtInstances = classInstances.filter(c => c.teacherIds.includes(teacher.id));
@@ -113,7 +147,7 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
             const incomeDetailsByClassId: Record<string, PayrollClassInfo> = {};
 
             classesTaughtInstances.forEach(instance => {
-                const classTemplate = danceClasses.find(dc => dc.id === instance.id);
+                const classTemplate = classesMap.get(instance.id);
                 if (!classTemplate) return;
 
                 let classPay = 0;
@@ -156,7 +190,7 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
                 }
                 incomeDetailsByClassId[instance.id].instances.push(instance);
                 incomeDetailsByClassId[instance.id].totalPay += classPay;
-                incomeDetailsByClassId[instance.id].payDescription = payDescription; // Assuming it's the same for all instances of a class template
+                incomeDetailsByClassId[instance.id].payDescription = payDescription;
             });
 
             if (paymentDetails?.type === 'monthly') {
@@ -170,7 +204,7 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
             groupedClasses.filter(c => c.classTemplate.teacherIds.length > 1).forEach(classInfo => {
                 const partnerIds = classInfo.classTemplate.teacherIds.filter(id => id !== teacher.id);
                 partnerIds.forEach(pId => {
-                    const partnerUser = users.find(u => u.id === pId);
+                    const partnerUser = usersMap.get(pId);
                     if (partnerUser) {
                         if (!sharedClassesByPartner[partnerUser.name]) sharedClassesByPartner[partnerUser.name] = [];
                         sharedClassesByPartner[partnerUser.name].push(classInfo);
@@ -181,7 +215,7 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
             const getPaymentsForGroup = (classGroup: PayrollClassInfo[]) => {
                 const studentIds = new Set<number>();
                 classGroup.forEach(c => c.instances.forEach(i => i.enrolledStudentIds.forEach(id => studentIds.add(id))));
-                return getStudentPaymentData(studentIds);
+                return Array.from(studentIds).map(id => paymentsByStudentMap.get(id)).filter((p): p is StudentPayment => !!p);
             };
 
             const individualStudentsPayments = getPaymentsForGroup(individualClasses);
@@ -198,7 +232,13 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
              const nonPartnerTeachers = users.filter(u => u.role === 'Profesor' && !u.isPartner);
              const payroll = nonPartnerTeachers.map(user => {
                  const calc = calculateForTeacher(user.id);
-                 return { user, classes: calc?.individualClasses.concat(Object.values(calc?.sharedClassesByPartner || {}).flat()) || [], totalPay: calc?.totalIncome || 0 };
+                 const individual = calc?.individualClasses || [];
+                 const shared = Object.values(calc?.sharedClassesByPartner || {}).flat();
+                 return { 
+                     user, 
+                     classes: [...individual, ...shared], 
+                     totalPay: calc?.totalIncome || 0 
+                 };
              });
              return { payroll };
         }
@@ -314,7 +354,7 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
                 <TabsContent value="individual" className="mt-6 space-y-6">
                      <StudentPaymentsTable 
                         payments={individualStudentsPayments} 
-                        onPaymentsUpdate={setStudentPayments}
+                        onPaymentsUpdate={updatePayments} 
                         users={users} 
                         membershipPlans={membershipPlans} 
                         title="Pagos de Alumnos (Clases Individuales)" 
@@ -359,7 +399,7 @@ export const TeacherPayroll = React.memo(function TeacherPayroll({ mode, partner
                                 <TabsContent key={partnerName} value={partnerName} className="mt-4 space-y-6">
                                     <StudentPaymentsTable 
                                         payments={sharedStudentsPaymentsByPartner[partnerName] || []}
-                                        onPaymentsUpdate={setStudentPayments}
+                                        onPaymentsUpdate={updatePayments}
                                         users={users}
                                         membershipPlans={membershipPlans}
                                         title={`Pagos de Alumnos (Clases con ${partnerName})`}

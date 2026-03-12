@@ -391,16 +391,16 @@ export default function AdminMembershipsPage() {
               <div className="space-y-4 border-b pb-6 pt-2">
                 <h3 className="text-lg font-semibold flex items-center gap-2"><TicketPercent className="h-5 w-5" /> Tipo de Acceso y Precios</h3>
                 <FormField control={form.control} name="accessType" render={({ field }) => (
-                   <FormItem><FormLabel>Forma de consumo</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                       <SelectContent>
-                         <SelectItem value="time_pass">Por Tiempo (Mensual / Ilimitado)</SelectItem>
-                         <SelectItem value="class_pack">Por Clases (Bono Fijo)</SelectItem>
-                         <SelectItem value="custom_pack">Personalizado (Alumno elige cantidad)</SelectItem>
-                       </SelectContent>
-                     </Select><FormMessage />
-                   </FormItem>
+                  <FormItem><FormLabel>Forma de consumo</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="time_pass">Por Tiempo (Mensual / Ilimitado)</SelectItem>
+                        <SelectItem value="class_pack">Por Clases (Bono Fijo)</SelectItem>
+                        <SelectItem value="custom_pack">Personalizado (Alumno elige cantidad)</SelectItem>
+                      </SelectContent>
+                    </Select><FormMessage />
+                  </FormItem>
                 )} />
 
                 <div className="grid grid-cols-2 gap-4">
@@ -440,8 +440,8 @@ export default function AdminMembershipsPage() {
                     {fields.map((item, index) => (
                       <div key={item.id} className="flex items-end gap-3 p-2 border bg-background rounded-md shadow-sm">
                         <GripVertical className="h-5 w-5 text-muted-foreground" />
-                        <FormField control={form.control} name={`priceTiers.${index}.classCount`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Cant. Clases</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name={`priceTiers.${index}.price`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Precio (€)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name={`priceTiers.${index}.classCount`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Cant. Clases</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name={`priceTiers.${index}.price`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Precio (€)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}> <Trash2 className="h-4 w-4 text-destructive" /> </Button>
                       </div>
                     ))}
@@ -468,15 +468,15 @@ export default function AdminMembershipsPage() {
 
                 {validityType === 'relative' && (
                   <div className="grid grid-cols-2 gap-4 p-3 bg-muted rounded-md">
-                    <FormField control={form.control} name="durationValue" render={({ field }) => ( <FormItem><FormLabel>Durará...</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="durationUnit" render={({ field }) => ( <FormItem><FormLabel>Unidad</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="days">Días</SelectItem><SelectItem value="weeks">Semanas</SelectItem><SelectItem value="months">Meses</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="durationValue" render={({ field }) => (<FormItem><FormLabel>Durará...</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="durationUnit" render={({ field }) => (<FormItem><FormLabel>Unidad</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="days">Días</SelectItem><SelectItem value="weeks">Semanas</SelectItem><SelectItem value="months">Meses</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                   </div>
                 )}
                 {validityType === 'monthly' && (
                   <div className="space-y-4 p-3 bg-muted rounded-md">
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField control={form.control} name="validityMonths" render={({ field }) => ( <FormItem><FormLabel>¿Cuántos meses?</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                      <FormField control={form.control} name="monthlyStartType" render={({ field }) => ( <FormItem><FormLabel>Día de inicio</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="from_purchase">Día de compra</SelectItem><SelectItem value="next_month">Día 1 del siguiente mes</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                      <FormField control={form.control} name="validityMonths" render={({ field }) => (<FormItem><FormLabel>¿Cuántos meses?</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="monthlyStartType" render={({ field }) => (<FormItem><FormLabel>Día de inicio</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="from_purchase">Día de compra</SelectItem><SelectItem value="next_month">Día 1 del siguiente mes</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                     </div>
                     <FormField control={form.control} name="targetMonth" render={({ field }) => (
                       <FormItem><FormLabel>Mes de Referencia (Opcional)</FormLabel>

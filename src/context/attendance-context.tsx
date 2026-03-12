@@ -63,13 +63,10 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const generateInstancesForTeacher = useCallback((teacherId: number, start: Date, end: Date, allClasses: DanceClass[]) => {
     if (!allClasses || allClasses.length === 0) return;
 
-    // Convert DB relation format to something easier for the filter
-    // Note: in schema it's User[] @relation, but in lib types it's teacherIds: number[]
-    // We assume teacherIds is correctly populated or match by User object if available
     const teacherClasses = allClasses.filter(c => c.teacherIds?.includes(teacherId));
-
     const newInstances: ClassInstance[] = [];
     const interval = eachDayOfInterval({ start, end });
+    const instanceIdsToFetch: {id: string, date: string}[] = [];
 
     interval.forEach(day => {
       const dayOfWeekName = daysOfWeekMap[getDay(day)];
@@ -86,9 +83,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         if (shouldAdd) {
           const instanceId = `${c.id}-${dateStr}`;
 
-          // Try to fetch attendance record if not present
           if (!attendanceRecords[instanceId]) {
-            fetchAttendance(c.id, dateStr);
+            instanceIdsToFetch.push({id: c.id, date: dateStr});
           }
 
           if (!classInstances.some(inst => inst.instanceId === instanceId)) {
@@ -104,13 +100,16 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       });
     });
 
+    // Batch a few at a time or just avoid the loop-fetch
+    instanceIdsToFetch.forEach(({id, date}) => fetchAttendance(id, date));
+
     if (newInstances.length > 0) {
       setClassInstances(prev => {
         const existingIds = new Set(prev.map(i => i.instanceId));
         const filteredNew = newInstances.filter(i => !existingIds.has(i.instanceId));
+        if (filteredNew.length === 0) return prev;
+        
         const updated = [...prev, ...filteredNew].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        // Map over updated list to ensure statues are correctly reflected from attendanceRecords
         return updated.map(inst => {
           const rec = attendanceRecords[inst.instanceId];
           return rec ? { ...inst, status: rec.status } : inst;

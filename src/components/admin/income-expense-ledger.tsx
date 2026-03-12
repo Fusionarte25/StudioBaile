@@ -28,13 +28,19 @@ const transactionFormSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
-export function IncomeExpenseLedger() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function IncomeExpenseLedger({ transactions: initialTransactions }: { transactions?: Transaction[] }) {
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
+  const [isLoading, setIsLoading] = useState(!initialTransactions);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (initialTransactions) {
+      setTransactions(initialTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setIsLoading(false);
+      return;
+    }
+
     const fetchTransactions = async () => {
       setIsLoading(true);
       try {
@@ -52,7 +58,7 @@ export function IncomeExpenseLedger() {
       }
     };
     fetchTransactions();
-  }, []);
+  }, [initialTransactions]);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),

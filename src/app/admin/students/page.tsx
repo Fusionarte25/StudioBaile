@@ -70,7 +70,7 @@ export default function AdminStudentsPage() {
     const { currentUser, updateCurrentUser } = useAuth();
 
     const fetchData = async () => {
-        setIsLoading(true);
+        if (students.length === 0) setIsLoading(true);
         try {
             const [usersRes, membershipsRes, plansRes, classesRes] = await Promise.all([
                 fetch('/api/users'), fetch('/api/student-memberships'), 

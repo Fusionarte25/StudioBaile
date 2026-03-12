@@ -73,7 +73,7 @@ export default function AdminUsersPage() {
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
     const fetchUsers = async () => {
-        setIsLoading(true);
+        if (users.length === 0) setIsLoading(true);
         try {
             const res = await fetch('/api/users');
             if (res.ok) {
