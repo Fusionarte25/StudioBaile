@@ -12,7 +12,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Paperclip, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { PlusCircle, Paperclip, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '../ui/skeleton';
@@ -32,6 +32,7 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
   const [isLoading, setIsLoading] = useState(!initialTransactions);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -71,10 +72,51 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
     }
   });
 
+  const handleEdit = (t: Transaction) => {
+    setSelectedTransaction(t);
+    form.reset({
+      type: t.type as 'ingreso' | 'egreso',
+      category: t.category,
+      description: t.description,
+      amount: t.amount,
+      date: format(parseISO(t.date), 'yyyy-MM-dd'),
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleAdd = () => {
+    setSelectedTransaction(null);
+    form.reset({
+      type: 'egreso',
+      category: '',
+      description: '',
+      amount: 0,
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta transacción?')) return;
+    
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete transaction');
+
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      toast({ title: "Transacción eliminada" });
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo eliminar la transacción.", variant: "destructive" });
+    }
+  };
+
   const onSubmit = async (data: TransactionFormValues) => {
     try {
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
+      const method = selectedTransaction ? 'PUT' : 'POST';
+      const url = selectedTransaction ? `/api/transactions/${selectedTransaction.id}` : '/api/transactions';
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
@@ -82,14 +124,20 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
       if (!res.ok) throw new Error('Failed to save transaction');
 
       const savedTransaction = await res.json();
-      setTransactions(prev => [savedTransaction, ...prev]);
+      
+      if (selectedTransaction) {
+        setTransactions(prev => prev.map(t => t.id === savedTransaction.id ? savedTransaction : t));
+      } else {
+        setTransactions(prev => [savedTransaction, ...prev]);
+      }
 
       toast({
-        title: "Transacción añadida",
-        description: "La transacción ha sido registrada exitosamente."
+        title: selectedTransaction ? "Transacción actualizada" : "Transacción añadida",
+        description: `La transacción ha sido ${selectedTransaction ? 'actualizada' : 'registrada'} exitosamente.`
       });
       setIsDialogOpen(false);
       form.reset();
+      setSelectedTransaction(null);
     } catch (error) {
       toast({ title: "Error", description: "No se pudo guardar la transacción.", variant: "destructive" });
     }
@@ -98,18 +146,19 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
   return (
     <>
       <div className="flex items-center justify-end mb-4">
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) setSelectedTransaction(null);
+        }}>
+            <Button size="sm" onClick={handleAdd}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Añadir Transacción
             </Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Añadir Nueva Transacción</DialogTitle>
+              <DialogTitle>{selectedTransaction ? 'Editar Transacción' : 'Añadir Nueva Transacción'}</DialogTitle>
               <DialogDescription>
-                Registra un nuevo ingreso o egreso manualmente.
+                {selectedTransaction ? 'Modifica los detalles de la transacción registrada.' : 'Registra un nuevo ingreso o egreso manualmente.'}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -137,8 +186,8 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
                 )} />
 
                 <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit">Guardar Transacción</Button>
+                  <Button type="button" variant="ghost" onClick={() => { setIsDialogOpen(false); setSelectedTransaction(null); }}>Cancelar</Button>
+                  <Button type="submit">{selectedTransaction ? 'Actualizar' : 'Guardar'} Transacción</Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -151,6 +200,7 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
             <TableRow>
               <TableHead>Descripción</TableHead>
               <TableHead className="text-right">Monto</TableHead>
+              <TableHead className="text-right w-[100px]">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -159,6 +209,7 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-8 w-3/4" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-1/4 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : (
@@ -178,6 +229,18 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
                   </TableCell>
                   <TableCell className={`text-right font-mono font-bold ${t.type === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
                     {t.type === 'ingreso' ? '+' : '-'}€{t.amount.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(t)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span className="sr-only">Editar</span>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(t.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="sr-only">Eliminar</span>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

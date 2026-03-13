@@ -119,10 +119,13 @@ export default function ProfilePage() {
     }, [currentUser, profileForm]);
     
     
-    const membership = currentUser && allData ? (allData.studentMemberships || []).find(m => m.userId === currentUser.id) as StudentMembership | null : null;
-    const plan = membership && allData ? (allData.membershipPlans || []).find(p => p.id === membership.planId) : null;
-    const payment = currentUser && allData ? (allData.studentPayments || []).find(p => p.studentId === currentUser.id && p.planId === membership?.planId) : null;
-    const isMembershipActive = membership ? isBefore(new Date(), parseISO(membership.endDate)) : false;
+    const myMemberships = currentUser && allData ? (allData.studentMemberships || []).filter(m => m.userId === currentUser.id) as StudentMembership[] : [];
+    const activeMemberships = myMemberships.filter(m => isBefore(new Date(), parseISO(m.endDate)));
+    
+    // Helper to get class names from IDs
+    const getClassName = (id: string) => {
+        return allData?.danceClasses.find(c => c.id === id)?.name || id;
+    };
     
     const myEnrolledClasses = useMemo(() => {
         if (!currentUser || !allData) return [];
@@ -218,17 +221,17 @@ export default function ProfilePage() {
                     <TabsContent value="dashboard" className="mt-6 space-y-6">
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Membresía</CardTitle><HandHelping className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Membresías</CardTitle><HandHelping className="h-4 w-4 text-muted-foreground" /></CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{isMembershipActive && plan ? plan.title : 'Inactiva'}</div>
-                                    {isMembershipActive && membership && <p className="text-xs text-muted-foreground">Expira el {format(parseISO(membership.endDate), 'PPP', {locale: es})}</p>}
+                                    <div className="text-2xl font-bold">{activeMemberships.length > 0 ? `${activeMemberships.length} Activa${activeMemberships.length > 1 ? 's' : ''}` : 'Inactiva'}</div>
+                                    {activeMemberships.length > 0 && <p className="text-xs text-muted-foreground">{activeMemberships.map(m => allData?.membershipPlans.find(p => p.id === m.planId)?.title).join(', ')}</p>}
                                 </CardContent>
                             </Card>
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clases Restantes</CardTitle><CalendarClock className="h-4 w-4 text-muted-foreground" /></CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{plan?.accessType === 'class_pack' ? membership?.classesRemaining : '∞'}</div>
-                                    <p className="text-xs text-muted-foreground">{plan?.accessType === 'class_pack' ? `de tu bono` : (isMembershipActive ? 'Clases ilimitadas' : 'N/A')}</p>
+                                    <div className="text-2xl font-bold">{activeMemberships.some(m => allData?.membershipPlans.find(p => p.id === m.planId)?.accessType === 'class_pack') ? activeMemberships.reduce((acc, m) => acc + (m.classesRemaining || 0), 0) : '∞'}</div>
+                                    <p className="text-xs text-muted-foreground">Total entre tus bonos activos</p>
                                 </CardContent>
                             </Card>
                             <Card className="col-span-1 md:col-span-2 lg:col-span-1">
@@ -323,20 +326,55 @@ export default function ProfilePage() {
                             <div className="lg:col-span-2">
                                 <Card className="flex flex-col h-full">
                                     <CardHeader><CardTitle className="flex items-center gap-2 font-headline"><TicketPercent className="h-6 w-6 text-primary"/> Detalles de Membresía</CardTitle><CardDescription>El estado actual de tu plan y pagos.</CardDescription></CardHeader>
-                                    <CardContent className="flex-grow">
-                                        {membership && plan && payment ? (
-                                            <div className="space-y-4">
-                                                <h3 className="text-xl font-semibold">{plan.title}</h3>
-                                                <div className="flex items-center gap-2">{isMembershipActive ? <Badge><BadgeCheck className="mr-1 h-4 w-4"/>Activa</Badge> : <Badge variant="destructive"><XCircle className="mr-1 h-4 w-4"/>Expirada</Badge>}<Badge variant={payment.status === 'paid' ? 'default' : payment.status === 'pending' ? 'destructive' : 'secondary'}>{paymentStatusLabels[payment.status]}</Badge></div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm border-t pt-4">
-                                                    <div><p className="font-medium">Periodo</p><p className="text-muted-foreground">{format(parseISO(membership.startDate), 'dd/MM/yy')} - {format(parseISO(membership.endDate), 'dd/MM/yy')}</p></div>
-                                                    {plan.accessType === 'class_pack' && (<div><p className="font-medium">Clases Restantes</p><p className="text-muted-foreground">{membership.classesRemaining ?? 0} / {plan.classCount}</p></div>)}
-                                                    <div><p className="font-medium">Total Facturado</p><p className="text-muted-foreground">€{(payment.totalAmount || 0).toFixed(2)}</p></div>
-                                                    <div><p className="font-medium">Total Pagado</p><p className="text-muted-foreground">€{(payment.amountPaid || 0).toFixed(2)}</p></div>
-                                                    {(payment.amountDue || 0) > 0 && (<div><p className="font-medium text-destructive">Saldo Pendiente</p><p className="text-destructive font-bold">€{(payment.amountDue || 0).toFixed(2)}</p></div>)}
-                                                </div>
-                                                {payment.notes && <div className="text-sm pt-4 border-t"><p className="font-medium">Notas</p><p className="text-muted-foreground whitespace-pre-wrap">{payment.notes}</p></div>}
-                                            </div>
+                                    <CardContent className="flex-grow space-y-6">
+                                        {myMemberships.length > 0 ? (
+                                            myMemberships.map((membership, idx) => {
+                                                const plan = allData.membershipPlans.find(p => p.id === membership.planId);
+                                                const payment = allData.studentPayments.find(p => p.studentId === currentUser.id && p.planId === membership.planId);
+                                                const isActive = isBefore(new Date(), parseISO(membership.endDate));
+                                                const selectedClasses = (() => {
+                                                    try {
+                                                        const ids = JSON.parse(membership.selectedClassIds || '[]');
+                                                        return Array.isArray(ids) ? ids : [];
+                                                    } catch { return []; }
+                                                })();
+
+                                                return (
+                                                    <div key={membership.id || idx} className={cn("p-4 border rounded-lg space-y-4", !isActive && "opacity-60 bg-muted/50")}>
+                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                            <h3 className="text-xl font-semibold">{plan?.title || 'Plan de Membresía'}</h3>
+                                                            <div className="flex items-center gap-2">
+                                                                {isActive ? <Badge><BadgeCheck className="mr-1 h-4 w-4"/>Activa</Badge> : <Badge variant="destructive"><XCircle className="mr-1 h-4 w-4"/>Expirada</Badge>}
+                                                                {payment && <Badge variant={payment.status === 'paid' ? 'default' : payment.status === 'pending' ? 'destructive' : 'secondary'}>{paymentStatusLabels[payment.status as keyof typeof paymentStatusLabels] || payment.status}</Badge>}
+                                                            </div>
+                                                        </div>
+
+                                                        {selectedClasses.length > 0 && (
+                                                            <div className="bg-accent/10 p-3 rounded-md">
+                                                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Cursos Inscritos</p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {selectedClasses.map(classId => (
+                                                                        <Badge key={classId} variant="secondary" className="font-normal">
+                                                                            {getClassName(classId)}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm border-t pt-4">
+                                                            <div><p className="font-medium">Periodo</p><p className="text-muted-foreground">{format(parseISO(membership.startDate), 'dd/MM/yy')} - {format(parseISO(membership.endDate), 'dd/MM/yy')}</p></div>
+                                                            {plan?.accessType === 'class_pack' && (<div><p className="font-medium">Clases Restantes</p><p className="text-muted-foreground">{membership.classesRemaining ?? 0} / {plan.classCount}</p></div>)}
+                                                            {payment && (
+                                                                <>
+                                                                    <div><p className="font-medium">Pagado</p><p className="text-muted-foreground">€{(payment.amountPaid || 0).toFixed(2)} / €{(payment.totalAmount || 0).toFixed(2)}</p></div>
+                                                                    {payment.amountDue > 0 && (<div><p className="font-medium text-destructive">Saldo Pendiente</p><p className="text-destructive font-bold">€{(payment.amountDue || 0).toFixed(2)}</p></div>)}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
                                         ) : (
                                             <div className="text-center py-8"><p className="text-muted-foreground">No tienes una membresía activa.</p><Button className="mt-4" onClick={() => router.push('/memberships')}>Ver Planes</Button></div>
                                         )}

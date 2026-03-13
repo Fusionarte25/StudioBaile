@@ -185,28 +185,19 @@ export default function AdminStudentsPage() {
     }
 
     const getStudentMembershipInfo = (studentId: number) => {
-        const membership = membershipMap.get(studentId);
-        if (!membership) {
-            return { planTitle: 'Sin membresía', status: 'Inactiva', statusColor: 'text-red-500' };
+        const memberships = studentMemberships.filter(m => m.userId === studentId);
+        if (memberships.length === 0) {
+            return { planTitle: 'Sin membresía', status: 'Inactiva', statusColor: 'text-red-500', count: 0 };
         }
         
-        const plan = planMap.get(membership.planId);
-        const endDate = parseISO(membership.endDate);
-        const isActive = isBefore(new Date(), endDate);
-
-        let statusText = `Expira el ${format(endDate, 'PPP', { locale: es })}`;
-        if (!isActive) {
-            statusText = `Expiró el ${format(endDate, 'PPP', { locale: es })}`;
-        }
-        
-        if(plan?.accessType === 'class_pack' && membership.classesRemaining !== undefined) {
-             statusText += ` - ${membership.classesRemaining} clases restantes`;
-        }
+        const activeCount = memberships.filter(m => isBefore(new Date(), parseISO(m.endDate))).length;
+        const mainPlan = planMap.get(memberships[0].planId);
 
         return {
-            planTitle: plan?.title || 'Plan Desconocido',
-            status: statusText,
-            statusColor: isActive ? 'text-green-600' : 'text-red-500',
+            planTitle: activeCount > 1 ? `${activeCount} Planes Activos` : (mainPlan?.title || 'Plan Desconocido'),
+            status: activeCount > 0 ? `${activeCount} Activa(s)` : 'Expirada(s)',
+            statusColor: activeCount > 0 ? 'text-green-600' : 'text-red-500',
+            count: memberships.length
         };
     };
     
@@ -507,29 +498,52 @@ export default function AdminStudentsPage() {
                             </Card>
                             <Card>
                                 <CardHeader className="flex flex-row justify-between items-center">
-                                    <CardTitle className="text-lg flex items-center gap-2"><TicketPercent className="h-5 w-5"/>Membresía Actual</CardTitle>
+                                    <CardTitle className="text-lg flex items-center gap-2"><TicketPercent className="h-5 w-5"/>Membresías del Alumno</CardTitle>
                                     <Button variant="outline" size="sm" onClick={handlePrintReceipt}>
                                         <Printer className="mr-2 h-4 w-4" />
                                         Imprimir Comprobante
                                     </Button>
                                 </CardHeader>
-                                {currentPlan && currentMembership ? (
-                                    <CardContent className="text-sm space-y-2">
-                                        <p className="font-semibold text-base">{currentPlan.title}</p>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant={isBefore(new Date(), parseISO(currentMembership.endDate)) ? 'default' : 'destructive'}>
-                                                {isBefore(new Date(), parseISO(currentMembership.endDate)) ? 'Activa' : 'Expirada'}
-                                            </Badge>
-                                        </div>
-                                        <p><span className="font-medium">Válida desde:</span> {format(parseISO(currentMembership.startDate), 'PPP', { locale: es })}</p>
-                                        <p><span className="font-medium">Hasta:</span> {format(parseISO(currentMembership.endDate), 'PPP', { locale: es })}</p>
-                                        {currentPlan.accessType === 'class_pack' && (
-                                            <p><span className="font-medium">Clases restantes:</span> {currentMembership.classesRemaining ?? 0}</p>
-                                        )}
-                                    </CardContent>
+                                <CardContent className="space-y-4">
+                                {selectedStudent && studentMemberships.filter(m => m.userId === selectedStudent.id).length > 0 ? (
+                                    studentMemberships.filter(m => m.userId === selectedStudent.id).map((m, idx) => {
+                                        const plan = planMap.get(m.planId);
+                                        const isActive = isBefore(new Date(), parseISO(m.endDate));
+                                        const selectedClasses = (() => {
+                                            try { return JSON.parse(m.selectedClassIds || '[]'); } catch { return []; }
+                                        })();
+
+                                        return (
+                                            <div key={m.id || idx} className={cn("p-3 border rounded-md space-y-2", !isActive && "bg-muted/50")}>
+                                                <div className="flex justify-between items-start">
+                                                    <p className="font-semibold">{plan?.title || 'Plan Desconocido'}</p>
+                                                    <Badge variant={isActive ? 'default' : 'destructive'}>
+                                                        {isActive ? 'Activa' : 'Expirada'}
+                                                    </Badge>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground space-y-1">
+                                                    <p><span className="font-medium">Periodo:</span> {format(parseISO(m.startDate), 'dd/MM/yy')} - {format(parseISO(m.endDate), 'dd/MM/yy')}</p>
+                                                    {plan?.accessType === 'class_pack' && (
+                                                        <p><span className="font-medium">Clases restantes:</span> {m.classesRemaining ?? 0}</p>
+                                                    )}
+                                                    {selectedClasses.length > 0 && (
+                                                        <div className="pt-1">
+                                                            <p className="font-medium mb-1">Cursos:</p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {selectedClasses.map((cid: string) => (
+                                                                    <Badge key={cid} variant="outline" className="text-[10px] py-0">{getClassNameById(cid)}</Badge>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
                                 ) : (
-                                    <CardContent><p className="text-sm text-muted-foreground">Este alumno no tiene una membresía activa.</p></CardContent>
+                                    <p className="text-sm text-muted-foreground">Este alumno no tiene una membresía activa.</p>
                                 )}
+                                </CardContent>
                             </Card>
                             <Card>
                                 <CardHeader><CardTitle className="text-lg flex items-center gap-2"><List className="h-5 w-5"/>Clases Inscritas</CardTitle></CardHeader>

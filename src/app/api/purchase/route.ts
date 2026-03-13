@@ -173,12 +173,34 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 2. Delete old membership and create the new one
-      // We only delete if it overlaps or if we want one active membership for now.
-      // User requested "one active membership" logic in previous sessions.
-      await tx.studentMembership.deleteMany({
+      // 2. CHECK FOR OVERLAPS (User requested: can have multiple memberships but not for the same class)
+      const existingMemberships = await tx.studentMembership.findMany({
         where: { userId: userId },
       });
+
+      const activeMemberships = existingMemberships.filter(m => {
+        const endDate = new Date(m.endDate);
+        return endDate > now;
+      });
+
+      let alreadyEnrolledClassIds: string[] = [];
+      activeMemberships.forEach(m => {
+        try {
+          const ids = JSON.parse(m.selectedClassIds || "[]");
+          if (Array.isArray(ids)) {
+            alreadyEnrolledClassIds = [...alreadyEnrolledClassIds, ...ids];
+          }
+        } catch (e) {}
+      });
+
+      const incomingClassIds = Array.isArray(selectedClassIds) ? selectedClassIds : [];
+      const overlappingIds = incomingClassIds.filter(id => alreadyEnrolledClassIds.includes(id));
+
+      if (overlappingIds.length > 0) {
+        throw new Error(`Ya tienes una membresía activa que cubre algunas de estas clases. Selecciona clases diferentes.`);
+      }
+
+      // 3. Create the new membership (old memberships are NO LONGER deleted)
 
       await tx.studentMembership.create({
         data: {
