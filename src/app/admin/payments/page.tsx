@@ -45,16 +45,14 @@ export default function AdminPaymentsPage() {
   const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [usersRes, plansRes, classesRes, paymentsRes] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/memberships'),
-          fetch('/api/classes'),
-          fetch('/api/payments'),
-        ]);
-        if (usersRes.ok) setUsers(await usersRes.json());
-        if (plansRes.ok) setMembershipPlans(await plansRes.json());
-        if (classesRes.ok) setDanceClasses(await classesRes.json());
-        if (paymentsRes.ok) setStudentPayments(await paymentsRes.json());
+        const response = await fetch('/api/admin/consolidated-data');
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(Array.isArray(data.users) ? data.users : []);
+          setMembershipPlans(Array.isArray(data.membershipPlans) ? data.membershipPlans : []);
+          setDanceClasses(Array.isArray(data.danceClasses) ? data.danceClasses : []);
+          setStudentPayments(Array.isArray(data.studentPayments) ? data.studentPayments : []);
+        }
       } catch (error) {
         console.error("Failed to fetch data for payments page", error);
         toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });

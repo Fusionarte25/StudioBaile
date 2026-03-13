@@ -33,6 +33,8 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
   const [isLoading, setIsLoading] = useState(!initialTransactions);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -96,15 +98,17 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta transacción?')) return;
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
     
     try {
-      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/transactions/${itemToDelete}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete transaction');
 
-      setTransactions(prev => prev.filter(t => t.id !== id));
+      setTransactions(prev => prev.filter(t => t.id !== itemToDelete));
       toast({ title: "Transacción eliminada" });
+      setItemToDelete(null);
+      setDeleteConfirmText("");
     } catch (error) {
       toast({ title: "Error", description: "No se pudo eliminar la transacción.", variant: "destructive" });
     }
@@ -193,6 +197,36 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-destructive">¿ Confirmar eliminación ?</DialogTitle>
+              <DialogDescription>
+                Esta acción es permanente. Para confirmar, escribe <span className="font-bold text-foreground">BORRAR</span> a continuación.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input 
+                value={deleteConfirmText} 
+                onChange={(e) => setDeleteConfirmText(e.target.value)} 
+                placeholder="Escribe BORRAR para confirmar"
+                className="font-bold"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setItemToDelete(null); setDeleteConfirmText(""); }}>Cancelar</Button>
+              <Button 
+                variant="destructive" 
+                disabled={deleteConfirmText !== "BORRAR"}
+                onClick={handleDelete}
+              >
+                Eliminar Permanentemente
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       <div className="overflow-y-auto h-96">
         <Table>
@@ -236,7 +270,7 @@ export function IncomeExpenseLedger({ transactions: initialTransactions }: { tra
                         <Pencil className="h-3.5 w-3.5" />
                         <span className="sr-only">Editar</span>
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(t.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setItemToDelete(t.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                         <span className="sr-only">Eliminar</span>
                       </Button>

@@ -72,20 +72,16 @@ export default function AdminStudentsPage() {
     const fetchData = async () => {
         if (students.length === 0) setIsLoading(true);
         try {
-            const [usersRes, membershipsRes, plansRes, classesRes] = await Promise.all([
-                fetch('/api/users'), fetch('/api/student-memberships'), 
-                fetch('/api/memberships'), fetch('/api/classes')
-            ]);
-            
-            if (usersRes.ok) {
-                const allUsers = await usersRes.json();
+            const response = await fetch('/api/admin/consolidated-data');
+            if (response.ok) {
+                const data = await response.json();
+                const allUsers = Array.isArray(data.users) ? data.users : [];
                 setUsers(allUsers);
                 setStudents(allUsers.filter((u: User) => u.role === 'Estudiante'));
+                setStudentMemberships(Array.isArray(data.studentMemberships) ? data.studentMemberships : []);
+                setMembershipPlans(Array.isArray(data.membershipPlans) ? data.membershipPlans : []);
+                setDanceClasses(Array.isArray(data.danceClasses) ? data.danceClasses : []);
             }
-            if (membershipsRes.ok) setStudentMemberships(await membershipsRes.json());
-            if (plansRes.ok) setMembershipPlans(await plansRes.json());
-            if (classesRes.ok) setDanceClasses(await classesRes.json());
-            
         } catch (error) {
             console.error("Failed to fetch student data:", error);
             toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });

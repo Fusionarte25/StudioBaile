@@ -213,6 +213,20 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // 4. Enroll student in the selected classes (Synchronization)
+      if (Array.isArray(selectedClassIds) && selectedClassIds.length > 0) {
+        for (const cid of selectedClassIds) {
+          await tx.danceClass.update({
+            where: { id: cid },
+            data: {
+              enrolledStudents: {
+                connect: { id: userId }
+              }
+            }
+          });
+        }
+      }
+
       // 3. If registration fee was paid, update the user's record
       if (regFee > 0) {
         await tx.user.update({

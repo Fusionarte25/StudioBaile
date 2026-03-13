@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Edit } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 
 const paymentEditSchema = z.object({
   id: z.string(),
@@ -43,6 +43,8 @@ interface StudentPaymentsTableProps {
 export function StudentPaymentsTable({ payments, onPaymentsUpdate, users, membershipPlans, title, description }: StudentPaymentsTableProps) {
   const { userRole } = useAuth();
   const [editingPayment, setEditingPayment] = useState<StudentPayment | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<StudentPayment | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const { toast } = useToast();
   
   const canEdit = userRole === 'Admin' || userRole === 'Administrativo' || userRole === 'Socio';
@@ -111,6 +113,27 @@ export function StudentPaymentsTable({ payments, onPaymentsUpdate, users, member
         toast({ title: "Error", description: (error as Error).message, variant: "destructive" });
     }
   }
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+        const response = await fetch(`/api/payments/${itemToDelete.id}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) throw new Error('Failed to delete payment');
+
+        onPaymentsUpdate(
+            payments.filter(p => p.id !== itemToDelete.id)
+        );
+
+        toast({ title: "Pago eliminado", description: "El registro de pago ha sido removido." });
+        setItemToDelete(null);
+        setDeleteConfirmText("");
+    } catch (error) {
+        toast({ title: "Error", description: (error as Error).message, variant: "destructive" });
+    }
+  }
 
   return (
     <Card className="mt-6">
@@ -149,57 +172,64 @@ export function StudentPaymentsTable({ payments, onPaymentsUpdate, users, member
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell max-w-xs truncate">{p.notes}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-right font-mono text-red-600">€{p.amountDue.toFixed(2)}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-right font-mono text-red-600">€{(p.amountDue || 0).toFixed(2)}</TableCell>
                   <TableCell className="no-print">
                     {canEdit && (
-                        <Dialog open={editingPayment?.id === p.id} onOpenChange={(isOpen) => !isOpen && setEditingPayment(null)}>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(p)}>
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Editar</span>
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                              <DialogHeader>
-                                  <DialogTitle>Editar Estado de Pago</DialogTitle>
-                                  <DialogDescription>
-                                      Actualiza el estado del pago para {getStudentName(p.studentId)}.
-                                  </DialogDescription>
-                              </DialogHeader>
-                              <Form {...editForm}>
-                                  <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
-                                       <FormField control={editForm.control} name="status" render={({ field }) => (
-                                        <FormItem><FormLabel>Estado del Pago</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
-                                          <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="pending">Pendiente</SelectItem>
-                                            <SelectItem value="deposit">Adelanto</SelectItem>
-                                            <SelectItem value="paid">Pagado</SelectItem>
-                                          </SelectContent>
-                                        </Select><FormMessage /></FormItem>
-                                      )} />
-                                       <FormField control={editForm.control} name="amountPaid" render={({ field }) => (
+                        <div className="flex items-center gap-1">
+                          <Dialog open={editingPayment?.id === p.id} onOpenChange={(isOpen) => !isOpen && setEditingPayment(null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(p)}>
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Editar</span>
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Editar Estado de Pago</DialogTitle>
+                                    <DialogDescription>
+                                        Actualiza el estado del pago para {getStudentName(p.studentId)}.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form {...editForm}>
+                                    <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
+                                         <FormField control={editForm.control} name="status" render={({ field }) => (
+                                          <FormItem><FormLabel>Estado del Pago</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="pending">Pendiente</SelectItem>
+                                              <SelectItem value="deposit">Adelanto</SelectItem>
+                                              <SelectItem value="paid">Pagado</SelectItem>
+                                            </SelectContent>
+                                          </Select><FormMessage /></FormItem>
+                                        )} />
+                                         <FormField control={editForm.control} name="amountPaid" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Monto Pagado (€)</FormLabel>
+                                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={editForm.control} name="notes" render={({ field }) => (
                                           <FormItem>
-                                              <FormLabel>Monto Pagado (€)</FormLabel>
-                                              <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                              <FormLabel>Notas</FormLabel>
+                                              <FormControl><Textarea placeholder="Añade un comentario..." {...field} /></FormControl>
                                               <FormMessage />
                                           </FormItem>
-                                      )} />
-                                      <FormField control={editForm.control} name="notes" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Notas</FormLabel>
-                                            <FormControl><Textarea placeholder="Añade un comentario..." {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                      )} />
-                                      <DialogFooter>
-                                          <Button type="button" variant="ghost" onClick={() => setEditingPayment(null)}>Cancelar</Button>
-                                          <Button type="submit">Guardar</Button>
-                                      </DialogFooter>
-                                  </form>
-                              </Form>
-                          </DialogContent>
-                        </Dialog>
+                                        )} />
+                                        <DialogFooter>
+                                            <Button type="button" variant="ghost" onClick={() => setEditingPayment(null)}>Cancelar</Button>
+                                            <Button type="submit">Guardar</Button>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                          </Dialog>
+                          
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setItemToDelete(p)}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Eliminar</span>
+                          </Button>
+                        </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -215,6 +245,36 @@ export function StudentPaymentsTable({ payments, onPaymentsUpdate, users, member
           </Table>
         </div>
       </CardContent>
+
+      <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Eliminar Registro de Pago</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar este cobro para <span className="font-bold">{itemToDelete ? getStudentName(itemToDelete.studentId) : ''}</span>? 
+              Para confirmar, escribe <span className="font-bold text-foreground">ELIMINAR</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input 
+              value={deleteConfirmText} 
+              onChange={(e) => setDeleteConfirmText(e.target.value)} 
+              placeholder="Escribe ELIMINAR para confirmar"
+              className="font-bold"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setItemToDelete(null); setDeleteConfirmText(""); }}>Cancelar</Button>
+            <Button 
+                variant="destructive" 
+                disabled={deleteConfirmText !== "ELIMINAR"}
+                onClick={handleDelete}
+            >
+                Eliminar Registro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

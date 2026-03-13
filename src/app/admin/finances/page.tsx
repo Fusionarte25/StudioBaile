@@ -26,20 +26,15 @@ export default function FinancesPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [usersRes, classesRes, transRes, paymentsRes, plansRes] = await Promise.all([
-        fetch('/api/users'),
-        fetch('/api/classes'),
-        fetch('/api/transactions'),
-        fetch('/api/payments'),
-        fetch('/api/memberships'),
-      ]);
-
-      if (usersRes.ok) setUsers(await usersRes.json());
-      if (classesRes.ok) setDanceClasses(await classesRes.json());
-      if (transRes.ok) setTransactions(await transRes.json());
-      if (paymentsRes.ok) setStudentPayments(await paymentsRes.json());
-      if (plansRes.ok) setMembershipPlans(await plansRes.json());
-
+      const response = await fetch('/api/admin/consolidated-data');
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(Array.isArray(data.users) ? data.users : []);
+        setDanceClasses(Array.isArray(data.danceClasses) ? data.danceClasses : []);
+        setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+        setStudentPayments(Array.isArray(data.studentPayments) ? data.studentPayments : []);
+        setMembershipPlans(Array.isArray(data.membershipPlans) ? data.membershipPlans : []);
+      }
     } catch (error) {
       console.error("Error fetching finance data:", error);
     } finally {

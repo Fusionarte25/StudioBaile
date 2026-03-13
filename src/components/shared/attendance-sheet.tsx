@@ -35,19 +35,14 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [classRes, usersRes, membershipsRes, plansRes, paymentsRes] = await Promise.all([
-          fetch('/api/classes'),
-          fetch('/api/users'),
-          fetch('/api/student-memberships'),
-          fetch('/api/memberships'),
-          fetch('/api/payments'),
-        ]);
-        if (classRes.ok && usersRes.ok && membershipsRes.ok && plansRes.ok && paymentsRes.ok) {
-          const allClasses: DanceClass[] = await classRes.json();
-          const allUsers: User[] = await usersRes.json();
-          const allMemberships: any[] = await membershipsRes.json();
-          const allPlans: any[] = await plansRes.json();
-          const allPayments: any[] = await paymentsRes.json();
+        const response = await fetch('/api/admin/consolidated-data');
+        if (response.ok) {
+          const data = await response.json();
+          const allClasses: DanceClass[] = data.danceClasses || [];
+          const allUsers: User[] = data.users || [];
+          const allMemberships: any[] = data.studentMemberships || [];
+          const allPlans: any[] = data.membershipPlans || [];
+          const allPayments: any[] = data.studentPayments || [];
 
           const targetClass = allClasses.find(c => c.id === classId);
           if (targetClass) {

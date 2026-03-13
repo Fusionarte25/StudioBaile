@@ -146,11 +146,13 @@ export type Transaction = {
 }
 
 export type StudentMembership = {
+  id?: number;
   userId: number;
   planId: string;
   startDate: string;
   endDate: string;
   classesRemaining?: number;
+  selectedClassIds?: string;
 }
 
 export type StudentPayment = {

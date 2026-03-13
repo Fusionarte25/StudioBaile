@@ -19,41 +19,59 @@ const classSchema = z.object({
 
 export async function GET() {
   try {
-    const classes = await prisma.danceClass.findMany({
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        type: true,
-        day: true,
-        date: true,
-        time: true,
-        room: true,
-        duration: true,
-        capacity: true,
-        cancellationPolicyHours: true,
-        status: true,
-        isCancelledAndHidden: true,
-        isVisibleToStudents: true,
-        rentalContact: true,
-        rentalPrice: true,
-        workshopPaymentType: true,
-        workshopPaymentValue: true,
-        styleId: true,
-        levelId: true,
-        teachers: {
-          select: { id: true }
-        },
-        enrolledStudents: {
-          select: { id: true }
+    const [classes, memberships] = await Promise.all([
+      prisma.danceClass.findMany({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          type: true,
+          day: true,
+          date: true,
+          time: true,
+          room: true,
+          duration: true,
+          capacity: true,
+          cancellationPolicyHours: true,
+          status: true,
+          isCancelledAndHidden: true,
+          isVisibleToStudents: true,
+          styleId: true,
+          levelId: true,
+          teachers: { select: { id: true } },
+          enrolledStudents: { select: { id: true } }
         }
-      }
+      }),
+      prisma.studentMembership.findMany({
+        where: {
+          endDate: { gte: new Date().toISOString().split('T')[0] }
+        }
+      })
+    ]);
+
+    const response = classes.map(c => {
+      const explicitStudentIds = c.enrolledStudents.map(s => s.id);
+      
+      // Also include students who have this class ID in their active membership
+      const membershipStudentIds: number[] = [];
+      memberships.forEach(m => {
+        try {
+          const classIds = JSON.parse(m.selectedClassIds || '[]');
+          if (Array.isArray(classIds) && classIds.includes(c.id)) {
+            membershipStudentIds.push(m.userId);
+          }
+        } catch (e) {}
+      });
+
+      // Unique merge
+      const allStudentIds = Array.from(new Set([...explicitStudentIds, ...membershipStudentIds]));
+
+      return {
+        ...c,
+        teacherIds: c.teachers.map(t => t.id),
+        enrolledStudentIds: allStudentIds,
+      };
     });
-    const response = classes.map(c => ({
-      ...c,
-      teacherIds: c.teachers.map(t => t.id),
-      enrolledStudentIds: c.enrolledStudents.map(s => s.id),
-    }))
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching classes:', error);
