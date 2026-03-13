@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { format, parseISO, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import type { UserRole } from '@/context/auth-context';
 import type { DanceClass, User } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -34,31 +35,39 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [classRes, usersRes, membershipsRes, plansRes] = await Promise.all([
+        const [classRes, usersRes, membershipsRes, plansRes, paymentsRes] = await Promise.all([
           fetch('/api/classes'),
           fetch('/api/users'),
           fetch('/api/student-memberships'),
           fetch('/api/memberships'),
+          fetch('/api/payments'),
         ]);
-        if (classRes.ok && usersRes.ok && membershipsRes.ok && plansRes.ok) {
+        if (classRes.ok && usersRes.ok && membershipsRes.ok && plansRes.ok && paymentsRes.ok) {
           const allClasses: DanceClass[] = await classRes.json();
           const allUsers: User[] = await usersRes.json();
           const allMemberships: any[] = await membershipsRes.json();
           const allPlans: any[] = await plansRes.json();
+          const allPayments: any[] = await paymentsRes.json();
 
           const targetClass = allClasses.find(c => c.id === classId);
           if (targetClass) {
             setDanceClass(targetClass);
-            const students = allUsers.filter(u => targetClass.enrolledStudentIds.includes(u.id));
+            const students = allUsers.filter(u => (targetClass.enrolledStudentIds || []).includes(u.id));
 
-            // Attach membership info to students for display
-            const studentsWithMembership = students.map(s => {
+            // Attach membership and payment info to students for display
+            const studentsWithData = students.map(s => {
               const m = allMemberships.find(m => m.userId === s.id);
               const p = m ? allPlans.find(plan => plan.id === m.planId) : null;
-              return { ...s, membership: m, plan: p };
+              
+              // Find the last payment for this specific plan/membership
+              const lastPayment = allPayments
+                .filter(pay => pay.studentId === s.id && pay.planId === m?.planId)
+                .sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())[0];
+
+              return { ...s, membership: m, plan: p, lastPayment };
             });
 
-            setEnrolledStudents(studentsWithMembership as any);
+            setEnrolledStudents(studentsWithData as any);
           }
         }
       } catch (e) {
@@ -184,9 +193,19 @@ export function AttendanceSheet({ classId, date, userRole }: AttendanceSheetProp
                       <TableCell className="hidden sm:table-cell">
                         {m ? (
                           <div className="flex flex-col gap-1">
-                            <Badge variant={isAlDía ? 'secondary' : 'destructive'} className="w-fit text-[10px] px-1 h-5">
-                              {isExpirado ? 'Expirado' : !hasClasses ? 'Sin clases' : !isClassAllowed ? 'Clase no permitida' : 'Activo'}
-                            </Badge>
+                             <div className="flex items-center gap-1 flex-wrap">
+                                <Badge variant={isAlDía ? 'secondary' : 'destructive'} className="text-[10px] px-1 h-5">
+                                  {isExpirado ? 'Expirado' : !hasClasses ? 'Sin clases' : !isClassAllowed ? 'Clase no permitida' : 'Activo'}
+                                </Badge>
+                                {student.lastPayment && (
+                                   <Badge variant={student.lastPayment.status === 'paid' ? 'outline' : 'destructive'} className={cn(
+                                       "text-[10px] px-1 h-5",
+                                       student.lastPayment.status === 'paid' && "bg-green-50 text-green-700 border-green-200"
+                                   )}>
+                                       {student.lastPayment.status === 'paid' ? 'Pagado' : student.lastPayment.status === 'pending' ? 'Pdte.' : 'Parcial'}
+                                   </Badge>
+                                )}
+                             </div>
                             <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
                               {p?.title} {p?.accessType === 'class_pack' && `(${m.classesRemaining}/${p.classCount})`}
                             </span>

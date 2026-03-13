@@ -11,6 +11,7 @@ import { membershipPlanZodSchema } from '@/lib/types';
 const purchaseSchema = z.object({
   userId: z.number(),
   planId: z.string().min(1, { message: "El ID del plan es obligatorio." }),
+  couponCode: z.string().optional(),
 }).passthrough(); // Use passthrough to allow other fields without validating them initially
 
 export async function POST(request: NextRequest) {
@@ -79,7 +80,47 @@ export async function POST(request: NextRequest) {
 
     // Use the fetched data from here on, not the client data.
     const basePrice = totalPrice ?? (plan.price ? plan.price : 0);
-    const finalPrice = basePrice + regFee;
+    
+    // --- Coupon Logic ---
+    let couponDiscount = 0;
+    let appliedCouponId = null;
+
+    if (body.couponCode) {
+        const coupon = await prisma.coupon.findFirst({
+            where: {
+                code: body.couponCode.toUpperCase(),
+                status: 'active'
+            }
+        });
+
+        if (coupon) {
+            const now = new Date();
+            const isExpired = coupon.expirationDate && new Date(coupon.expirationDate) < now;
+            const isLimitReached = coupon.usageLimit !== null && coupon.usageLimit <= 0; // Simplified for now
+
+            let isApplicable = false;
+            if (coupon.applicableTo === 'all_memberships') {
+                isApplicable = true;
+            } else if (coupon.applicableTo === 'specific_memberships') {
+                const specificPlanIds = (() => {
+                    try { return JSON.parse(coupon.specificPlanIds || '[]'); } catch { return []; }
+                })();
+                isApplicable = specificPlanIds.includes(planId);
+            }
+
+            if (!isExpired && !isLimitReached && isApplicable) {
+                if (coupon.discountType === 'fixed') {
+                    couponDiscount = coupon.discountValue || 0;
+                } else {
+                    couponDiscount = (basePrice * (coupon.discountValue || 0)) / 100;
+                }
+                appliedCouponId = coupon.id;
+            }
+        }
+    }
+
+    const discountedBasePrice = Math.max(0, basePrice - couponDiscount);
+    const finalPrice = discountedBasePrice + regFee;
     const classesRemaining = classCount ?? (plan.accessType === 'class_pack' ? plan.classCount : undefined);
 
     let startDate: Date;
@@ -156,6 +197,18 @@ export async function POST(request: NextRequest) {
           where: { id: userId },
           data: { registrationPaidYear: currentYear }
         });
+      }
+
+      // 4. Update coupon usage if applied
+      if (appliedCouponId) {
+          await tx.coupon.update({
+              where: { id: appliedCouponId },
+              data: {
+                  usageLimit: {
+                      decrement: 1
+                  }
+              }
+          });
       }
     });
 

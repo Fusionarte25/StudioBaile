@@ -15,6 +15,8 @@ import { CourseSelectorModal } from '@/components/shared/CourseSelectorModal';
 import { CustomPackModal } from '@/components/shared/CustomPackModal';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LoginRequiredDialog } from '@/components/shared/login-required-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useSettings } from '@/context/settings-context';
 import { add, format, parseISO } from 'date-fns';
@@ -94,7 +96,7 @@ export default function MembershipsPage() {
   const [isCustomPackOpen, setIsCustomPackOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [planToConfirm, setPlanToConfirm] = useState<MembershipPlan | null>(null);
-  const [customPackConfig, setCustomPackConfig] = useState<{classCount: number; totalPrice: number;} | null>(null);
+  const [couponCode, setCouponCode] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -132,6 +134,7 @@ export default function MembershipsPage() {
     }
 
     setSelectedPlan(plan);
+    setCouponCode(""); // Reset coupon on new request
 
     if (plan.accessType === 'time_pass') {
         if (plan.isUnlimitedCourses) {
@@ -146,7 +149,7 @@ export default function MembershipsPage() {
     }
   };
 
-  const processPurchase = async (planToPurchase: MembershipPlan, options?: { classCount?: number, totalPrice?: number, selectedClassIds?: string[] }) => {
+  const processPurchase = async (planToPurchase: MembershipPlan, options?: { classCount?: number, totalPrice?: number, selectedClassIds?: string[], coupon?: string }) => {
     if (!userId) return;
 
     if (!planToPurchase.id) {
@@ -167,7 +170,8 @@ export default function MembershipsPage() {
                 planId: planToPurchase.id,
                 classCount: options?.classCount,
                 totalPrice: options?.totalPrice,
-                selectedClassIds: options?.selectedClassIds
+                selectedClassIds: options?.selectedClassIds,
+                couponCode: options?.coupon || couponCode
             }),
         });
 
@@ -198,16 +202,16 @@ export default function MembershipsPage() {
     setPlanToConfirm(null);
   };
   
-  const handleCustomPackTierSelected = (tier: PriceTier) => {
+  const handleCustomPackTierSelected = (tier: PriceTier, coupon?: string) => {
     if (!selectedPlan || selectedPlan.accessType !== 'custom_pack') return;
-    processPurchase(selectedPlan, { classCount: tier.classCount, totalPrice: tier.price });
+    processPurchase(selectedPlan, { classCount: tier.classCount, totalPrice: tier.price, coupon });
     setIsCustomPackOpen(false);
     setSelectedPlan(null);
   };
 
-  const handleClassesSelected = (selectedIds: string[]) => {
+  const handleClassesSelected = (selectedIds: string[], coupon?: string) => {
     if (!selectedPlan) return;
-    processPurchase(selectedPlan, { selectedClassIds: selectedIds });
+    processPurchase(selectedPlan, { selectedClassIds: selectedIds, coupon });
     setIsCourseSelectorOpen(false);
     setIsClassSelectorOpen(false);
     setSelectedPlan(null);
@@ -238,7 +242,7 @@ export default function MembershipsPage() {
       
       <LoginRequiredDialog isOpen={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} />
 
-      <AlertDialog open={!!planToConfirm} onOpenChange={(isOpen) => !isOpen && setPlanToConfirm(null)}>
+      <AlertDialog open={!!planToConfirm} onOpenChange={(isOpen) => { if(!isOpen) { setPlanToConfirm(null); setCouponCode(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Compra</AlertDialogTitle>
@@ -246,8 +250,18 @@ export default function MembershipsPage() {
               Estás a punto de adquirir el plan "{planToConfirm?.title}" por €{planToConfirm && 'price' in planToConfirm && planToConfirm.price !== undefined ? planToConfirm.price : '0'}. Se generará una factura pendiente en tu perfil. ¿Deseas continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-4 space-y-2">
+            <Label htmlFor="coupon-confirm" className="text-sm font-medium">¿Tienes un cupón de descuento?</Label>
+            <Input 
+                id="coupon-confirm"
+                placeholder="Ej: VERANO20" 
+                value={couponCode} 
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="font-mono"
+            />
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPlanToConfirm(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setPlanToConfirm(null); setCouponCode(""); }}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmPurchase}>Confirmar y Adquirir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -8,16 +8,27 @@ import { Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '../ui/card';
 
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+
 type CustomPackModalProps = {
     plan: MembershipPlan;
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (tier: PriceTier) => void;
+    onConfirm: (tier: PriceTier, coupon?: string) => void;
 };
 
 export function CustomPackModal({ plan, isOpen, onClose, onConfirm }: CustomPackModalProps) {
     const [allStyles, setAllStyles] = useState<DanceStyle[]>([]);
     const [selectedTier, setSelectedTier] = useState<PriceTier | null>(null);
+    const [couponCode, setCouponCode] = useState("");
+
+    useEffect(() => {
+        if (isOpen) {
+            setCouponCode("");
+            setSelectedTier(null);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         const fetchStyles = async () => {
@@ -39,7 +50,7 @@ export function CustomPackModal({ plan, isOpen, onClose, onConfirm }: CustomPack
 
     const handleConfirm = () => {
         if (selectedTier) {
-            onConfirm(selectedTier);
+            onConfirm(selectedTier, couponCode);
         }
     };
     
@@ -57,7 +68,7 @@ export function CustomPackModal({ plan, isOpen, onClose, onConfirm }: CustomPack
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="py-6 space-y-4">
+                <div className="py-6 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {priceTiers.map(tier => (
                             <Card 
@@ -74,6 +85,17 @@ export function CustomPackModal({ plan, isOpen, onClose, onConfirm }: CustomPack
                                 </CardContent>
                             </Card>
                         ))}
+                    </div>
+
+                    <div className="space-y-2 border-t pt-4">
+                        <Label htmlFor="coupon-custom" className="text-sm font-medium">¿Tienes un cupón de descuento? (Opcional)</Label>
+                        <Input 
+                            id="coupon-custom"
+                            placeholder="Ej: PROMO10" 
+                            value={couponCode} 
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            className="font-mono"
+                        />
                     </div>
                 </div>
 

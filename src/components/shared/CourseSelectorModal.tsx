@@ -6,23 +6,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, Users, GraduationCap } from 'lucide-react';
+import { CheckCircle, Clock, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '../ui/input';
 
 type CourseSelectorModalProps = {
     plan: MembershipPlan;
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (classIds: string[]) => void;
+    onConfirm: (classIds: string[], coupon?: string) => void;
 };
 
 export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: CourseSelectorModalProps) {
     const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
     const [allClasses, setAllClasses] = useState<DanceClass[]>([]);
+    const [couponCode, setCouponCode] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
     const { toast } = useToast();
@@ -53,20 +54,16 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
     useEffect(() => {
         if (isOpen) {
             setSelectedClassIds([]);
+            setCouponCode("");
         }
     }, [isOpen]);
 
     const filteredClasses = useMemo(() => {
         if (!allClasses.length) return [];
-        
         let filtered = allClasses;
-        
-        // Filter classes allowed by the plan
         if (plan.allowedClasses && plan.allowedClasses.length > 0) {
             filtered = filtered.filter(c => plan.allowedClasses?.includes(c.id));
         }
-        
-        // Always filter recurring and not hidden
         return filtered.filter(c => c.type !== 'rental' && !c.isCancelledAndHidden);
     }, [allClasses, plan.allowedClasses]);
 
@@ -78,8 +75,6 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
             if (prev.length < maxCourses) {
                 return [...prev, classId];
             }
-            // If already at max, replace last one or do nothing? User said "if 2, must choose 2"
-            // Let's just prevent more than max
             return prev;
         });
     };
@@ -115,7 +110,7 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
                                     <div 
                                         key={c.id} 
                                         className={cn(
-                                            "relative group flex items-start space-x-4 rounded-xl border p-4 transition-all duration-200",
+                                            "relative group flex items-start space-x-4 rounded-xl border p-4 transition-all duration-200 cursor-pointer",
                                             isSelected ? "bg-primary/5 border-primary ring-1 ring-primary/20" : "bg-card hover:bg-accent/5",
                                             isMaxed && "opacity-60 cursor-not-allowed"
                                         )}
@@ -127,22 +122,22 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
                                                 checked={isSelected} 
                                                 disabled={isMaxed}
                                                 className="h-5 w-5 rounded-full"
+                                                onClick={(e) => e.stopPropagation()}
+                                                onCheckedChange={() => !isMaxed && handleToggleClass(c.id)}
                                             />
                                         </div>
                                         <div className="flex-1 space-y-1">
                                             <Label 
                                                 htmlFor={`course-${c.id}`} 
-                                                className={cn("text-base font-semibold block leading-tight", !isMaxed && "cursor-pointer")}
+                                                className={cn("text-base font-semibold block leading-tight cursor-pointer")}
+                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 {c.name}
                                             </Label>
                                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                                <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {c.day}</span>
+                                                <span className="flex items-center gap-1 font-medium text-primary/80">{c.day}</span>
                                                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {c.time}</span>
                                             </div>
-                                            {c.description && (
-                                                <p className="text-xs text-muted-foreground line-clamp-1 italic mt-1">{c.description}</p>
-                                            )}
                                         </div>
                                         {isSelected && (
                                             <div className="absolute top-4 right-4 text-primary animate-in zoom-in duration-300">
@@ -161,17 +156,29 @@ export function CourseSelectorModal({ plan, isOpen, onClose, onConfirm }: Course
                     )}
                 </div>
 
-                <DialogFooter className="border-t pt-4">
-                    <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-                    <Button 
-                        onClick={() => onConfirm(selectedClassIds)} 
-                        disabled={selectedClassIds.length < maxCourses}
-                        className="min-w-[150px]"
-                    >
-                        {selectedClassIds.length < maxCourses 
-                            ? `Elige ${remaining} más` 
-                            : 'Confirmar Selección'}
-                    </Button>
+                <DialogFooter className="flex flex-col sm:flex-row items-center gap-4 border-t pt-4">
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-grow max-w-xs">
+                        <Label htmlFor="coupon-course" className="whitespace-nowrap text-xs">Cupón (opcional):</Label>
+                        <Input 
+                            id="coupon-course"
+                            placeholder="Ej: BAILA20" 
+                            value={couponCode} 
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            className="font-mono h-8 text-xs"
+                        />
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto justify-end">
+                        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+                        <Button 
+                            onClick={() => onConfirm(selectedClassIds, couponCode)} 
+                            disabled={selectedClassIds.length < maxCourses}
+                            className="min-w-[150px]"
+                        >
+                            {selectedClassIds.length < maxCourses 
+                                ? `Elige ${remaining} más` 
+                                : 'Confirmar Selección'}
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -16,6 +16,8 @@ import { Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Chec
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
+import { Input } from '../ui/input';
+
 type SelectedClass = {
     classId: string;
     date: string; // YYYY-MM-DD format
@@ -25,7 +27,7 @@ type ClassSelectorModalProps = {
     plan: MembershipPlan;
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (classIds: string[]) => void;
+    onConfirm: (classIds: string[], coupon?: string) => void;
     overrideClassCount?: number;
 };
 
@@ -66,6 +68,7 @@ export function ClassSelectorModal({ plan, isOpen, onClose, onConfirm, overrideC
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [allClasses, setAllClasses] = useState<DanceClass[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [couponCode, setCouponCode] = useState("");
     const [hasLoaded, setHasLoaded] = useState(false);
     const { toast } = useToast();
 
@@ -92,6 +95,7 @@ export function ClassSelectorModal({ plan, isOpen, onClose, onConfirm, overrideC
             setSelectedClasses([]);
             setCurrentMonth(new Date());
             setSelectedDate(new Date());
+            setCouponCode("");
         }
     }, [isOpen]);
 
@@ -243,11 +247,23 @@ export function ClassSelectorModal({ plan, isOpen, onClose, onConfirm, overrideC
                     </div>
                 </div>
 
-                <DialogFooter>
-                    <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-                    <Button onClick={() => onConfirm(selectedClasses.map(sc => sc.classId))} disabled={classesLeftToSelect > 0}>
-                        Confirmar {classCount - classesLeftToSelect} Clase(s) y Pagar
-                    </Button>
+                <DialogFooter className="flex flex-col sm:flex-row items-center gap-4 border-t pt-4">
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-grow max-w-xs">
+                        <Label htmlFor="coupon-class" className="whitespace-nowrap text-xs">Cupón:</Label>
+                        <Input 
+                            id="coupon-class"
+                            placeholder="Ej: BAILA20" 
+                            value={couponCode} 
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            className="font-mono h-8 text-xs"
+                        />
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto justify-end">
+                        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+                        <Button onClick={() => onConfirm(selectedClasses.map(sc => sc.classId), couponCode)} disabled={classesLeftToSelect > 0}>
+                            Confirmar {classCount - classesLeftToSelect} Clase(s) y Pagar
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -116,6 +116,12 @@ export default function AdminClassesPage() {
   const [classToCancel, setClassToCancel] = useState<DanceClass | null>(null);
   const [cancelReason, setCancelReason] = useState<'cancelled-low-attendance' | 'cancelled-teacher'>('cancelled-low-attendance');
   const [hideOnSchedule, setHideOnSchedule] = useState(false);
+  
+  const [viewingClassStudents, setViewingClassStudents] = useState<DanceClass | null>(null);
+  const [studentMemberships, setStudentMemberships] = useState<any[]>([]);
+  const [membershipPlans, setMembershipPlans] = useState<any[]>([]);
+  const [studentPayments, setStudentPayments] = useState<any[]>([]);
+  const [isClassDetailsLoading, setIsClassDetailsLoading] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -306,6 +312,25 @@ export default function AdminClassesPage() {
     }
   }
 
+  const handleViewStudents = async (danceClass: DanceClass) => {
+      setViewingClassStudents(danceClass);
+      setIsClassDetailsLoading(true);
+      try {
+          const [mRes, pRes, payRes] = await Promise.all([
+              fetch('/api/student-memberships'),
+              fetch('/api/memberships'),
+              fetch('/api/payments')
+          ]);
+          if (mRes.ok) setStudentMemberships(await mRes.json());
+          if (pRes.ok) setMembershipPlans(await pRes.json());
+          if (payRes.ok) setStudentPayments(await payRes.json());
+      } catch (e) {
+          toast({ title: "Error", description: "No se pudieron cargar los detalles de los alumnos." });
+      } finally {
+          setIsClassDetailsLoading(false);
+      }
+  };
+
   const handleExportCSV = () => {
     const headers = ["ID", "Evento", "Tipo", "Profesor/Responsable", "Dia/Fecha", "Hora", "Sala"];
     const csvRows = [headers.join(',')];
@@ -435,6 +460,11 @@ export default function AdminClassesPage() {
                           {danceClass.type !== 'rental' && (
                             <DropdownMenuItem onClick={() => router.push(`/admin/classes/${danceClass.id}/attendance?date=${format(new Date(), 'yyyy-MM-dd')}`)}>
                               <ClipboardCheck className="mr-2 h-4 w-4" /> Tomar Asistencia
+                            </DropdownMenuItem>
+                          )}
+                          {danceClass.type !== 'rental' && (
+                            <DropdownMenuItem onClick={() => handleViewStudents(danceClass)}>
+                              <Users className="mr-2 h-4 w-4" /> Ver Alumnos
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem onClick={() => handleOpenCancelDialog(danceClass)}>
@@ -660,6 +690,98 @@ export default function AdminClassesPage() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Dialog for viewing inscribed students */}
+      <Dialog open={!!viewingClassStudents} onOpenChange={(open) => !open && setViewingClassStudents(null)}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Alumnos Inscritos: {viewingClassStudents?.name}
+            </DialogTitle>
+            <DialogDescription>
+                Listado de alumnos registrados en esta clase y su estado de pago.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isClassDetailsLoading ? (
+              <div className="py-8 space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+              </div>
+          ) : (
+              <div className="py-4">
+                  <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead>Alumno</TableHead>
+                              <TableHead>Membresía / Plan</TableHead>
+                              <TableHead>Estado Pago</TableHead>
+                              <TableHead className="text-right">Contacto</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {(viewingClassStudents?.enrolledStudentIds || []).map(sid => {
+                              const student = usersMap.get(sid);
+                              const membership = studentMemberships.find(m => m.userId === sid);
+                              const plan = membership ? membershipPlans.find(p => p.id === membership.planId) : null;
+                              const lastPayment = studentPayments
+                                .filter(pay => pay.studentId === sid && pay.planId === membership?.planId)
+                                .sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())[0];
+
+                              if (!student) return null;
+
+                              return (
+                                  <TableRow key={sid}>
+                                      <TableCell className="font-medium">{student.name}</TableCell>
+                                      <TableCell>
+                                          <div className="flex flex-col">
+                                              <span className="text-sm">{plan?.title || 'Sin plan'}</span>
+                                              {membership && (
+                                                  <span className="text-[10px] text-muted-foreground">
+                                                      Hasta {format(parseISO(membership.endDate), 'dd/MM/yy')}
+                                                  </span>
+                                              )}
+                                          </div>
+                                      </TableCell>
+                                      <TableCell>
+                                          {lastPayment ? (
+                                              <Badge variant={lastPayment.status === 'paid' ? 'outline' : 'destructive'} 
+                                                     className={cn(
+                                                         "text-[10px]",
+                                                         lastPayment.status === 'paid' && "bg-green-50 text-green-700 border-green-200"
+                                                     )}>
+                                                  {lastPayment.status === 'paid' ? 'Pagado' : 
+                                                   lastPayment.status === 'pending' ? 'Pdte.' : 
+                                                   lastPayment.status === 'deposit' ? 'Parcial' : lastPayment.status}
+                                              </Badge>
+                                          ) : (
+                                              <Badge variant="secondary" className="text-[10px]">Sin registro</Badge>
+                                          )}
+                                      </TableCell>
+                                      <TableCell className="text-right text-xs">
+                                          {student.mobile || student.email}
+                                      </TableCell>
+                                  </TableRow>
+                              );
+                          })}
+                          {(viewingClassStudents?.enrolledStudentIds || []).length === 0 && (
+                              <TableRow>
+                                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                                      No hay alumnos inscritos en esta clase.
+                                  </TableCell>
+                              </TableRow>
+                          )}
+                      </TableBody>
+                  </Table>
+              </div>
+          )}
+          <DialogFooter>
+              <Button onClick={() => setViewingClassStudents(null)}>Cerrar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

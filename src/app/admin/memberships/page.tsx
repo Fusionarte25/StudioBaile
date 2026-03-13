@@ -272,14 +272,14 @@ export default function AdminMembershipsPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Gestión de Membresías</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.push('/admin/coupons')}>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => router.push('/admin/coupons')}>
             <TicketPercent className="mr-2 h-4 w-4" />
-            Gestionar Cupones
+            Cupones
           </Button>
-          <Button onClick={() => handleOpenDialog()}>
+          <Button className="flex-1 sm:flex-none" onClick={() => handleOpenDialog()}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Añadir Plan
           </Button>
@@ -290,16 +290,17 @@ export default function AdminMembershipsPage() {
           <CardTitle>Planes de Membresía</CardTitle>
           <CardDescription>Añade, edita o elimina los planes de membresía disponibles.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+        <CardContent className="p-0 sm:p-6">
+          {/* Table for Desktop */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Plan</TableHead>
-                  <TableHead className="hidden sm:table-cell">Tipo de Acceso</TableHead>
-                  <TableHead className="hidden md:table-cell">Precio</TableHead>
-                  <TableHead className="hidden lg:table-cell">Visibilidad</TableHead>
-                  <TableHead>Acciones</TableHead>
+                  <TableHead>Tipo de Acceso</TableHead>
+                  <TableHead>Precio</TableHead>
+                  <TableHead>Visibilidad</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -309,7 +310,7 @@ export default function AdminMembershipsPage() {
                       <p className="font-medium">{plan.title}</p>
                       {plan.isPopular && <Badge variant="secondary" className="mt-1">Popular</Badge>}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         {plan.accessType === 'time_pass' ? <InfinityIcon className="h-4 w-4" /> : <TicketPercent className="h-4 w-4" />}
                         <span>
@@ -317,13 +318,13 @@ export default function AdminMembershipsPage() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{getPlanPriceDisplay(plan)}</TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell>{getPlanPriceDisplay(plan)}</TableCell>
+                    <TableCell>
                       <Badge variant={plan.visibility === 'public' ? 'default' : 'outline'}>
                         {plan.visibility === 'public' ? 'Público' : 'No Listado'}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -359,6 +360,66 @@ export default function AdminMembershipsPage() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Card list for Mobile */}
+          <div className="md:hidden divide-y">
+            {plans.map((plan) => (
+              <div key={plan.id} className="p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-bold text-lg">{plan.title}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {plan.isPopular && <Badge variant="secondary" className="text-[10px]">Popular</Badge>}
+                      <Badge variant={plan.visibility === 'public' ? 'default' : 'outline'} className="text-[10px]">
+                        {plan.visibility === 'public' ? 'Público' : 'No Listado'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenDialog(plan)}>
+                        <Pencil className="mr-2 h-4 w-4" /> Editar
+                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-[90vw] rounded-lg">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar plan?</AlertDialogTitle>
+                            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Volver</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(plan.id!)}>Eliminar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    {plan.accessType === 'time_pass' ? <InfinityIcon className="h-4 w-4" /> : <TicketPercent className="h-4 w-4" />}
+                    <span>
+                      {{ 'time_pass': 'Tiempo', 'class_pack': 'Bono', 'custom_pack': 'Personalizado' }[plan.accessType]}
+                    </span>
+                  </div>
+                  <span className="font-bold text-primary">{getPlanPriceDisplay(plan)}</span>
+                </div>
+              </div>
+            ))}
+            {plans.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground">No hay planes configurados.</div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -198,12 +198,12 @@ export default function AdminCouponsPage() {
       <div className="mb-4">
         <BackButton href="/admin/memberships">Volver a Membresías</BackButton>
       </div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
         <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
             <TicketPercent className="h-8 w-8 text-primary"/>
             Gestión de Cupones
         </h1>
-        <Button onClick={() => handleOpenDialog()}>
+        <Button className="w-full sm:w-auto" onClick={() => handleOpenDialog()}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Añadir Cupón
         </Button>
@@ -213,17 +213,18 @@ export default function AdminCouponsPage() {
           <CardTitle>Listado de Cupones</CardTitle>
           <CardDescription>Crea y gestiona los cupones de descuento para tu academia.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+        <CardContent className="p-0 sm:p-6">
+          {/* Table for Desktop */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Código</TableHead>
                   <TableHead>Descuento</TableHead>
-                  <TableHead className="hidden md:table-cell">Aplicable a</TableHead>
-                  <TableHead className="hidden sm:table-cell">Usos</TableHead>
+                  <TableHead>Aplicable a</TableHead>
+                  <TableHead>Usos</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -233,12 +234,12 @@ export default function AdminCouponsPage() {
                     <TableCell>
                         {coupon.discountType === 'fixed' ? `€${coupon.discountValue}` : `${coupon.discountValue}%`}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{getApplicabilityText(coupon)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{coupon.usageLimit || 'Ilimitados'}</TableCell>
+                    <TableCell>{getApplicabilityText(coupon)}</TableCell>
+                    <TableCell>{coupon.usageLimit || 'Ilimitados'}</TableCell>
                     <TableCell>
                         <Badge variant={coupon.status === 'active' ? 'default' : 'outline'}>{coupon.status === 'active' ? 'Activo' : 'Inactivo'}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -274,6 +275,63 @@ export default function AdminCouponsPage() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Card list for Mobile */}
+          <div className="md:hidden divide-y">
+            {coupons.map((coupon) => (
+              <div key={coupon.id} className="p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-mono font-bold text-lg">{coupon.code}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <Badge variant={coupon.status === 'active' ? 'default' : 'outline'} className="text-[10px]">
+                        {coupon.status === 'active' ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {coupon.discountType === 'fixed' ? `€${coupon.discountValue}` : `${coupon.discountValue}%`}
+                      </Badge>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenDialog(coupon)}>
+                        <Pencil className="mr-2 h-4 w-4" /> Editar
+                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-[90vw] rounded-lg">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar cupón?</AlertDialogTitle>
+                            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Volver</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(coupon.id)}>Eliminar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground"><span className="font-medium">Aplicable a:</span> {getApplicabilityText(coupon)}</p>
+                  <p className="text-muted-foreground"><span className="font-medium">Usos:</span> {coupon.usageLimit || 'Ilimitados'}</p>
+                </div>
+              </div>
+            ))}
+            {coupons.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground">No hay cupones configurados.</div>
+            )}
           </div>
         </CardContent>
       </Card>
