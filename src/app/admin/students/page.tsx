@@ -360,7 +360,7 @@ export default function AdminStudentsPage() {
                                 <div className="flex items-center gap-4">
                                     <Avatar>
                                         <AvatarImage src={student.avatar} alt={student.name} data-ai-hint="person face" />
-                                        <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                        <AvatarFallback>{(student.name || '').split(' ').map(n => n?.[0]).join('') || '?'}</AvatarFallback>
                                     </Avatar>
                                     <div>
                                         <p className="font-medium">{student.name}</p>
@@ -400,7 +400,7 @@ export default function AdminStudentsPage() {
                          <div className="flex items-center gap-4">
                             <Avatar className="h-16 w-16">
                                 <AvatarImage src={selectedStudent.avatar} alt={selectedStudent.name} />
-                                <AvatarFallback>{selectedStudent.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                <AvatarFallback>{(selectedStudent.name || '').split(' ').map(n => n?.[0]).join('') || '?'}</AvatarFallback>
                             </Avatar>
                             <div>
                                 <DialogTitle className="text-2xl font-headline">{form.getValues('name')}</DialogTitle>

@@ -25,7 +25,7 @@ export function UpcomingClasses({ classes = [], allUsers = [] }: { classes?: Dan
           <div key={c.id} className="flex items-center">
             <Avatar className="h-10 w-10">
               <AvatarImage src={firstTeacher?.avatar} alt={firstTeacher?.name} />
-              <AvatarFallback>{firstTeacher?.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{firstTeacher?.name?.[0] || '?'}</AvatarFallback>
             </Avatar>
             <div className="ml-4 space-y-1">
               <p className="text-sm font-medium leading-none">{c.name}</p>

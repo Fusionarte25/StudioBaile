@@ -86,12 +86,20 @@ export default function ProfilePage() {
                     fetch('/api/users'), fetch('/api/classes'), fetch('/api/memberships'), 
                     fetch('/api/payments'), fetch('/api/student-memberships')
                 ]);
-                const users = await usersRes.json();
-                const danceClasses = await classesRes.json();
-                const membershipPlans = await plansRes.json();
-                const studentPayments = await paymentsRes.json();
-                const studentMemberships = await membershipsRes.json();
-                setAllData({ users, danceClasses, membershipPlans, studentPayments, studentMemberships });
+                
+                const users = usersRes.ok ? await usersRes.json() : [];
+                const danceClasses = classesRes.ok ? await classesRes.json() : [];
+                const membershipPlans = plansRes.ok ? await plansRes.json() : [];
+                const studentPayments = paymentsRes.ok ? await paymentsRes.json() : [];
+                const studentMemberships = membershipsRes.ok ? await membershipsRes.json() : [];
+                
+                setAllData({ 
+                    users: Array.isArray(users) ? users : [], 
+                    danceClasses: Array.isArray(danceClasses) ? danceClasses : [], 
+                    membershipPlans: Array.isArray(membershipPlans) ? membershipPlans : [], 
+                    studentPayments: Array.isArray(studentPayments) ? studentPayments : [], 
+                    studentMemberships: Array.isArray(studentMemberships) ? studentMemberships : [] 
+                });
             } catch (error) {
                 toast({ title: "Error", description: "No se pudieron cargar los datos.", variant: "destructive" });
             } finally {
@@ -111,9 +119,9 @@ export default function ProfilePage() {
     }, [currentUser, profileForm]);
     
     
-    const membership = currentUser && allData ? allData.studentMemberships.find(m => m.userId === currentUser.id) as StudentMembership | null : null;
-    const plan = membership && allData ? allData.membershipPlans.find(p => p.id === membership.planId) : null;
-    const payment = currentUser && allData ? allData.studentPayments.find(p => p.studentId === currentUser.id && p.planId === membership?.planId) : null;
+    const membership = currentUser && allData ? (allData.studentMemberships || []).find(m => m.userId === currentUser.id) as StudentMembership | null : null;
+    const plan = membership && allData ? (allData.membershipPlans || []).find(p => p.id === membership.planId) : null;
+    const payment = currentUser && allData ? (allData.studentPayments || []).find(p => p.studentId === currentUser.id && p.planId === membership?.planId) : null;
     const isMembershipActive = membership ? isBefore(new Date(), parseISO(membership.endDate)) : false;
     
     const myEnrolledClasses = useMemo(() => {
@@ -198,7 +206,7 @@ export default function ProfilePage() {
             <div className="p-4 md:p-8 space-y-8">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight font-headline">Mi Perfil</h1>
-                    <p className="text-lg text-muted-foreground">Bienvenido/a de nuevo, {currentUser.name.split(' ')[0]}.</p>
+                    <p className="text-lg text-muted-foreground">Bienvenido/a de nuevo, {(currentUser.name || '').split(' ')[0]}.</p>
                 </div>
                 
                 <Tabs defaultValue="details" className="w-full">
@@ -239,7 +247,7 @@ export default function ProfilePage() {
                                             const teacher = allData.users.find(u => u.id === c.teacherIds[0]);
                                             return (
                                                 <div key={c.id} className="flex items-center">
-                                                    <Avatar className="h-10 w-10"><AvatarImage src={teacher?.avatar} alt={teacher?.name} /><AvatarFallback>{teacher?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                    <Avatar className="h-10 w-10"><AvatarImage src={teacher?.avatar} alt={teacher?.name} /><AvatarFallback>{teacher?.name?.[0] || '?'}</AvatarFallback></Avatar>
                                                     <div className="ml-4 space-y-1">
                                                         <p className="text-sm font-medium leading-none">{c.name} ({c.levelId})</p>
                                                         <p className="text-sm text-muted-foreground">{c.day} a las {c.time}</p>
@@ -271,9 +279,9 @@ export default function ProfilePage() {
                                         <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
                                             <CardHeader><div className="flex w-full items-start justify-between"><CardTitle className="font-headline text-xl">Mis Datos</CardTitle><Button variant="ghost" size="icon" className="h-7 w-7" type="button" onClick={isEditing ? handleSaveProfile : handleEditToggle}>{isEditing ? <Save className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}<span className="sr-only">{isEditing ? 'Guardar' : 'Editar'}</span></Button></div></CardHeader>
                                             <CardContent>
-                                                <div className="flex flex-col items-center text-center -mt-4 mb-6"><Avatar className={cn("h-24 w-24 mb-4", isEditing && "cursor-pointer hover:opacity-80")} onClick={handleAvatarClick}><AvatarImage src={watchedAvatar} alt={currentUser.name}/><AvatarFallback>{currentUser.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar><input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" /></div>
+                                                <div className="flex flex-col items-center text-center -mt-4 mb-6"><Avatar className={cn("h-24 w-24 mb-4", isEditing && "cursor-pointer hover:opacity-80")} onClick={handleAvatarClick}><AvatarImage src={watchedAvatar} alt={currentUser.name}/><AvatarFallback>{(currentUser.name || '').split(' ').map(n => n[0]).join('') || '?'}</AvatarFallback></Avatar><input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" /></div>
                                                 <div className="text-sm text-muted-foreground space-y-2">
-                                                    <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Miembro desde {format(parseISO(currentUser.joined), 'MMMM yyyy', {locale: es})}</div>
+                                                    <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Miembro desde {format(parseISO(currentUser.joined || new Date().toISOString()), 'MMMM yyyy', {locale: es})}</div>
                                                     {isEditing ? (
                                                         <div className="space-y-4 pt-4">
                                                             <FormField control={profileForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -323,9 +331,9 @@ export default function ProfilePage() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm border-t pt-4">
                                                     <div><p className="font-medium">Periodo</p><p className="text-muted-foreground">{format(parseISO(membership.startDate), 'dd/MM/yy')} - {format(parseISO(membership.endDate), 'dd/MM/yy')}</p></div>
                                                     {plan.accessType === 'class_pack' && (<div><p className="font-medium">Clases Restantes</p><p className="text-muted-foreground">{membership.classesRemaining ?? 0} / {plan.classCount}</p></div>)}
-                                                    <div><p className="font-medium">Total Facturado</p><p className="text-muted-foreground">€{payment.totalAmount.toFixed(2)}</p></div>
-                                                    <div><p className="font-medium">Total Pagado</p><p className="text-muted-foreground">€{payment.amountPaid.toFixed(2)}</p></div>
-                                                    {payment.amountDue > 0 && (<div><p className="font-medium text-destructive">Saldo Pendiente</p><p className="text-destructive font-bold">€{payment.amountDue.toFixed(2)}</p></div>)}
+                                                    <div><p className="font-medium">Total Facturado</p><p className="text-muted-foreground">€{(payment.totalAmount || 0).toFixed(2)}</p></div>
+                                                    <div><p className="font-medium">Total Pagado</p><p className="text-muted-foreground">€{(payment.amountPaid || 0).toFixed(2)}</p></div>
+                                                    {(payment.amountDue || 0) > 0 && (<div><p className="font-medium text-destructive">Saldo Pendiente</p><p className="text-destructive font-bold">€{(payment.amountDue || 0).toFixed(2)}</p></div>)}
                                                 </div>
                                                 {payment.notes && <div className="text-sm pt-4 border-t"><p className="font-medium">Notas</p><p className="text-muted-foreground whitespace-pre-wrap">{payment.notes}</p></div>}
                                             </div>
