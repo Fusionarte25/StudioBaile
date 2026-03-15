@@ -132,7 +132,7 @@ export default function ProfilePage() {
         return allData.danceClasses.filter(c => c.enrolledStudentIds && c.enrolledStudentIds.includes(currentUser.id));
     }, [currentUser, allData]);
     
-    const upcomingClassesToShow = isMembershipActive ? myEnrolledClasses : [];
+    const upcomingClassesToShow = activeMemberships.length > 0 ? myEnrolledClasses : [];
 
     const suggestedClasses = useMemo(() => {
         if (!currentUser || !allData) return [];
