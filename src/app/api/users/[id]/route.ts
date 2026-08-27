@@ -15,6 +15,7 @@ const userUpdateSchema = z.object({
   role: z.string().optional(),
 
   membershipPlanId: z.string().optional().nullable(),
+  membershipId: z.number().optional().nullable(),
   membershipStartDate: z.date().optional().nullable(),
   membershipEndDate: z.date().optional().nullable(),
   membershipClassesRemaining: z.number().optional().nullable(),
@@ -119,25 +120,35 @@ export async function PUT(
       });
 
       const planId = validatedData.membershipPlanId;
+      const membershipId = validatedData.membershipId;
       const startDate = validatedData.membershipStartDate;
       const endDate = validatedData.membershipEndDate;
 
-      if (planId !== undefined && startDate !== undefined && endDate !== undefined) {
-        await tx.studentMembership.deleteMany({
-          where: { userId: userId },
-        });
-
-        if (planId && planId !== 'none' && startDate && endDate) {
-          await tx.studentMembership.create({
+      if (membershipId) {
+          if (planId === 'none') {
+             await tx.studentMembership.delete({ where: { id: membershipId }});
+          } else if (planId && startDate && endDate) {
+             await tx.studentMembership.update({
+                 where: { id: membershipId },
+                 data: {
+                    planId: planId,
+                    startDate: startDate.toISOString(),
+                    endDate: endDate.toISOString(),
+                    classesRemaining: validatedData.membershipClassesRemaining,
+                 }
+             });
+          }
+      } else if (planId && planId !== 'none' && startDate && endDate) {
+        await tx.studentMembership.create({
             data: {
               userId: userId,
               planId: planId,
               startDate: startDate.toISOString(),
               endDate: endDate.toISOString(),
               classesRemaining: validatedData.membershipClassesRemaining,
+              selectedClassIds: "[]",
             }
-          });
-        }
+        });
       }
 
       return user;

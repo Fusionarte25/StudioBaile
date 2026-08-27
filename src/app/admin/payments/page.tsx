@@ -118,7 +118,7 @@ export default function AdminPaymentsPage() {
   
   const getEditorName = () => userRole ? userRole : 'Sistema';
 
-  const onNewInvoiceSubmit = (data: NewInvoiceFormValues) => {
+  const onNewInvoiceSubmit = async (data: NewInvoiceFormValues) => {
       const student = users.find(u => u.id === Number(data.studentId));
       const plan = membershipPlans.find(p => p.id === data.planId);
 
@@ -134,8 +134,7 @@ export default function AdminPaymentsPage() {
       
       const totalAmount = 'price' in plan && typeof plan.price === 'number' ? plan.price : 0;
 
-      const newPayment: StudentPayment = {
-          id: `inv-${Date.now()}`,
+      const newPaymentData = {
           studentId: student.id,
           planId: plan.id,
           invoiceDate: new Date().toISOString(),
@@ -144,15 +143,26 @@ export default function AdminPaymentsPage() {
           amountPaid: 0,
           amountDue: totalAmount,
           lastUpdatedBy: getEditorName(),
-          lastUpdatedDate: new Date().toISOString(),
           notes: '',
       };
 
-      setStudentPayments(prev => [...prev, newPayment]);
-
-      toast({ title: "Factura creada", description: `Se ha creado una factura para ${student.name}.` });
-      setIsNewInvoiceOpen(false);
-      newInvoiceForm.reset();
+      try {
+        const response = await fetch('/api/payments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPaymentData)
+        });
+        
+        if (!response.ok) throw new Error("Fallo al crear factura");
+        
+        const createdPayment = await response.json();
+        setStudentPayments(prev => [...prev, createdPayment]);
+        toast({ title: "Factura creada", description: `Se ha creado una factura para ${student.name}.` });
+        setIsNewInvoiceOpen(false);
+        newInvoiceForm.reset();
+      } catch (e) {
+          toast({ title: "Error", description: "No se pudo crear la factura.", variant: "destructive" });
+      }
   }
 
   const totals = studioPayments.reduce((acc, p) => {

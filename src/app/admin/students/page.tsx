@@ -26,6 +26,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-context';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 
 const studentEditFormSchema = z.object({
@@ -35,6 +36,7 @@ const studentEditFormSchema = z.object({
     mobile: z.string().optional(),
     dob: z.string().optional(),
     
+    membershipId: z.number().optional().nullable(),
     membershipPlanId: z.string().optional().nullable(),
     membershipStartDate: z.date().optional().nullable(),
     membershipEndDate: z.date().optional().nullable(),
@@ -132,6 +134,7 @@ export default function AdminStudentsPage() {
             email: student.email,
             mobile: student.mobile || '',
             dob: student.dob || '',
+            membershipId: membership?.id || null,
             membershipPlanId: membership?.planId || 'none',
             membershipStartDate: membership ? new Date(membership.startDate) : null,
             membershipEndDate: membership ? new Date(membership.endDate) : null,
@@ -401,185 +404,209 @@ export default function AdminStudentsPage() {
                     </div>
                 </DialogHeader>
                 <div className="flex-grow overflow-y-auto -mx-6 px-6 py-4 pr-4 -mr-2">
-                    {isEditing ? (
-                        <Form {...form}>
-                            <form id="student-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <Tabs defaultValue="info" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 mb-4">
+                            <TabsTrigger value="info">Perfil y Datos</TabsTrigger>
+                            <TabsTrigger value="membership">Membresía e Historial</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="info" className="space-y-6">
+                            {isEditing ? (
+                                <Form {...form}>
+                                    <form id="student-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                        <Card>
+                                            <CardHeader><CardTitle className="text-lg">Detalles Personales</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <FormField control={form.control} name="name" render={({ field }) => (
+                                                    <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="email" render={({ field }) => (
+                                                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <FormField control={form.control} name="mobile" render={({ field }) => (
+                                                        <FormItem><FormLabel>Móvil</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="dob" render={({ field }) => (
+                                                        <FormItem><FormLabel>Fecha de Nacimiento</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </form>
+                                </Form>
+                            ) : (
                                 <Card>
                                     <CardHeader><CardTitle className="text-lg">Detalles Personales</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <FormField control={form.control} name="name" render={({ field }) => (
-                                            <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={form.control} name="mobile" render={({ field }) => (
-                                                <FormItem><FormLabel>Móvil</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="dob" render={({ field }) => (
-                                                <FormItem><FormLabel>Fecha de Nacimiento</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
-                                            )} />
-                                        </div>
+                                    <CardContent className="grid grid-cols-2 gap-4 text-sm">
+                                        <div><p className="font-medium">Nombre</p><p>{selectedStudent.name}</p></div>
+                                        <div><p className="font-medium">Email</p><p>{selectedStudent.email}</p></div>
+                                        <div><p className="font-medium">Móvil</p><p>{selectedStudent.mobile || 'No especificado'}</p></div>
+                                        <div><p className="font-medium">Fecha de Nacimiento</p><p>{(selectedStudent.dob && selectedStudent.dob.length > 5) ? format(parseISO(selectedStudent.dob), 'PPP', {locale: es}) : 'No especificado'}</p></div>
                                     </CardContent>
                                 </Card>
+                            )}
+                        </TabsContent>
 
-                                <Card>
-                                    <CardHeader><CardTitle className="text-lg">Membresía</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <FormField control={form.control} name="membershipPlanId" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Plan de Membresía</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar plan..." /></SelectTrigger></FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">Sin membresía</SelectItem>
-                                                        {membershipPlans.filter(plan => !!plan.id).map(plan => <SelectItem key={plan.id} value={plan.id!}>{plan.title}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        {watchedPlanId && watchedPlanId !== 'none' && (
-                                             <div className="grid grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="membershipStartDate" render={({ field }) => (
-                                                    <FormItem className="flex flex-col"><FormLabel>Fecha de Inicio</FormLabel>
-                                                    <Popover><PopoverTrigger asChild>
-                                                        <FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                            {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                        </Button></FormControl>
-                                                    </PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                        <CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus locale={es}/>
-                                                    </PopoverContent></Popover><FormMessage />
-                                                  </FormItem>
+                        <TabsContent value="membership" className="space-y-6">
+                            {isEditing ? (
+                                <Form {...form}>
+                                    <form id="student-membership-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                        <Card>
+                                            <CardHeader><CardTitle className="text-lg">Gestión de Membresía Actual</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <p className="text-sm text-amber-600 font-medium pb-2">Atención: Cargar una membresía aquí reemplaza/actualiza la activa. Para añadir sin tocar historial es mejor hacerlo por cobro manual.</p>
+                                                <FormField control={form.control} name="membershipPlanId" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Plan de Membresía</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                            <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar plan..." /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="none">Sin membresía (Borrar)</SelectItem>
+                                                                {membershipPlans.filter(plan => !!plan.id).map(plan => <SelectItem key={plan.id} value={plan.id!}>{plan.title}</SelectItem>)}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
                                                 )} />
-                                                <FormField control={form.control} name="membershipEndDate" render={({ field }) => (
-                                                    <FormItem className="flex flex-col"><FormLabel>Fecha de Fin</FormLabel>
-                                                    <Popover><PopoverTrigger asChild>
-                                                        <FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                            {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                        </Button></FormControl>
-                                                    </PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                        <CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus locale={es}/>
-                                                    </PopoverContent></Popover><FormMessage />
-                                                  </FormItem>
-                                                )} />
-                                                {selectedPlanDetails?.accessType === 'class_pack' && (
-                                                    <FormField control={form.control} name="membershipClassesRemaining" render={({ field }) => (
-                                                        <FormItem className="col-span-2">
-                                                            <FormLabel>Clases Restantes</FormLabel>
-                                                            <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )} />
+                                                {watchedPlanId && watchedPlanId !== 'none' && (
+                                                     <div className="grid grid-cols-2 gap-4">
+                                                        <FormField control={form.control} name="membershipStartDate" render={({ field }) => (
+                                                            <FormItem className="flex flex-col"><FormLabel>Fecha de Inicio</FormLabel>
+                                                            <Popover><PopoverTrigger asChild>
+                                                                <FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                    {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                </Button></FormControl>
+                                                            </PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                                <CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus locale={es}/>
+                                                            </PopoverContent></Popover><FormMessage />
+                                                          </FormItem>
+                                                        )} />
+                                                        <FormField control={form.control} name="membershipEndDate" render={({ field }) => (
+                                                            <FormItem className="flex flex-col"><FormLabel>Fecha de Fin</FormLabel>
+                                                            <Popover><PopoverTrigger asChild>
+                                                                <FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                    {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                </Button></FormControl>
+                                                            </PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                                <CalendarComponent mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus locale={es}/>
+                                                            </PopoverContent></Popover><FormMessage />
+                                                          </FormItem>
+                                                        )} />
+                                                        {selectedPlanDetails?.accessType === 'class_pack' && (
+                                                            <FormField control={form.control} name="membershipClassesRemaining" render={({ field }) => (
+                                                                <FormItem className="col-span-2">
+                                                                    <FormLabel>Clases Restantes</FormLabel>
+                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )} />
+                                                        )}
+                                                     </div>
                                                 )}
-                                             </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </form>
-                        </Form>
-                    ) : (
-                        <div className="space-y-6">
-                            <Card>
-                                <CardHeader><CardTitle className="text-lg">Detalles Personales</CardTitle></CardHeader>
-                                <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                                    <div><p className="font-medium">Nombre</p><p>{selectedStudent.name}</p></div>
-                                    <div><p className="font-medium">Email</p><p>{selectedStudent.email}</p></div>
-                                    <div><p className="font-medium">Móvil</p><p>{selectedStudent.mobile || 'No especificado'}</p></div>
-                                    <div><p className="font-medium">Fecha de Nacimiento</p><p>{(selectedStudent.dob && selectedStudent.dob.length > 5) ? format(parseISO(selectedStudent.dob), 'PPP', {locale: es}) : 'No especificado'}</p></div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader className="flex flex-row justify-between items-center">
-                                    <CardTitle className="text-lg flex items-center gap-2"><TicketPercent className="h-5 w-5"/>Membresías del Alumno</CardTitle>
-                                    <Button variant="outline" size="sm" onClick={handlePrintReceipt}>
-                                        <Printer className="mr-2 h-4 w-4" />
-                                        Imprimir Comprobante
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                {selectedStudent && studentMemberships.filter(m => m.userId === selectedStudent.id).length > 0 ? (
-                                    studentMemberships.filter(m => m.userId === selectedStudent.id).map((m, idx) => {
-                                        const plan = planMap.get(m.planId);
-                                        const isActive = isBefore(new Date(), parseISO(m.endDate));
-                                        const selectedClasses = (() => {
-                                            try { return JSON.parse(m.selectedClassIds || '[]'); } catch { return []; }
-                                        })();
-
-                                        return (
-                                            <div key={m.id || idx} className={cn("p-3 border rounded-md space-y-2", !isActive && "bg-muted/50")}>
-                                                <div className="flex justify-between items-start">
-                                                    <p className="font-semibold">{plan?.title || 'Plan Desconocido'}</p>
-                                                    <Badge variant={isActive ? 'default' : 'destructive'}>
-                                                        {isActive ? 'Activa' : 'Expirada'}
-                                                    </Badge>
-                                                </div>
-                                                <div className="text-xs text-muted-foreground space-y-1">
-                                                    <p><span className="font-medium">Periodo:</span> {format(parseISO(m.startDate), 'dd/MM/yy')} - {format(parseISO(m.endDate), 'dd/MM/yy')}</p>
-                                                    {plan?.accessType === 'class_pack' && (
-                                                        <p><span className="font-medium">Clases restantes:</span> {m.classesRemaining ?? 0}</p>
-                                                    )}
-                                                    {selectedClasses.length > 0 && (
-                                                        <div className="pt-1">
-                                                            <p className="font-medium mb-1">Cursos:</p>
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {selectedClasses.map((cid: string) => (
-                                                                    <Badge key={cid} variant="outline" className="text-[10px] py-0">{getClassNameById(cid)}</Badge>
-                                                                ))}
-                                                            </div>
+                                            </CardContent>
+                                        </Card>
+                                    </form>
+                                </Form>
+                            ) : (
+                                <>
+                                    <Card>
+                                        <CardHeader className="flex flex-row justify-between items-center">
+                                            <CardTitle className="text-lg flex items-center gap-2"><TicketPercent className="h-5 w-5"/>Tarjetas de Membresías</CardTitle>
+                                            <Button variant="outline" size="sm" onClick={handlePrintReceipt}>
+                                                <Printer className="mr-2 h-4 w-4" />
+                                                Imprimir Comprobante
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                        {selectedStudent && studentMemberships.filter(m => m.userId === selectedStudent.id).length > 0 ? (
+                                            studentMemberships.filter(m => m.userId === selectedStudent.id).map((m, idx) => {
+                                                const plan = planMap.get(m.planId);
+                                                const isActive = isBefore(new Date(), parseISO(m.endDate));
+                                                const selectedClasses = (() => {
+                                                    try { return JSON.parse(m.selectedClassIds || '[]'); } catch { return []; }
+                                                })();
+        
+                                                return (
+                                                    <div key={m.id || idx} className={cn("p-3 border rounded-md space-y-2", !isActive && "bg-muted/50")}>
+                                                        <div className="flex justify-between items-start">
+                                                            <p className="font-semibold">{plan?.title || 'Plan Desconocido'}</p>
+                                                            <Badge variant={isActive ? 'default' : 'destructive'}>
+                                                                {isActive ? 'Activa' : 'Expirada'}
+                                                            </Badge>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">Este alumno no tiene una membresía activa.</p>
-                                )}
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader><CardTitle className="text-lg flex items-center gap-2"><List className="h-5 w-5"/>Clases Inscritas</CardTitle></CardHeader>
-                                <CardContent>
-                                    {enrolledClasses.length > 0 ? (
-                                        <ul className="space-y-3">
-                                            {enrolledClasses.map(c => (
-                                                <li key={c.id} className="text-sm flex justify-between items-center">
-                                                    <div><p className="font-medium">{c.name}</p><p className="text-muted-foreground">{c.day} - {c.time} con {getTeacherNames(c.teacherIds)}</p></div>
-                                                    <Badge variant="outline">{c.levelId}</Badge>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground">No está inscrito/a en ninguna clase actualmente.</p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader><CardTitle className="text-lg flex items-center gap-2"><CalendarCheck className="h-5 w-5"/>Historial de Asistencia</CardTitle></CardHeader>
-                                <CardContent>
-                                    {selectedStudent.attendanceHistory && selectedStudent.attendanceHistory.length > 0 ? (
-                                        <ul className="space-y-3">
-                                            {selectedStudent.attendanceHistory.map((att, index) => (
-                                                <li key={index} className="text-sm flex justify-between items-center">
-                                                    <div><p className="font-medium">{getClassNameById(att.classId)}</p><p className="text-muted-foreground">{format(parseISO(att.date), 'PPP', { locale: es })}</p></div>
-                                                    <Badge variant={att.status === 'presente' ? 'default' : 'destructive'} className="capitalize">
-                                                        {att.status === 'presente' ? <CalendarCheck className="mr-1 h-3 w-3" /> : <CalendarX className="mr-1 h-3 w-3" />}
-                                                        {att.status}
-                                                    </Badge>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground">No hay registros de asistencia.</p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
+                                                        <div className="text-xs text-muted-foreground space-y-1">
+                                                            <p><span className="font-medium">Periodo:</span> {format(parseISO(m.startDate), 'dd/MM/yy')} - {format(parseISO(m.endDate), 'dd/MM/yy')}</p>
+                                                            {plan?.accessType === 'class_pack' && (
+                                                                <p><span className="font-medium">Clases restantes:</span> {m.classesRemaining ?? 0}</p>
+                                                            )}
+                                                            {selectedClasses.length > 0 && (
+                                                                <div className="pt-1">
+                                                                    <p className="font-medium mb-1">Cursos:</p>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {selectedClasses.map((cid: string) => (
+                                                                            <Badge key={cid} variant="outline" className="text-[10px] py-0">{getClassNameById(cid)}</Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">Este alumno no tiene una membresía activa.</p>
+                                        )}
+                                        </CardContent>
+                                    </Card>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <Card>
+                                            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><List className="h-5 w-5"/>Inscripciones</CardTitle></CardHeader>
+                                            <CardContent>
+                                                {enrolledClasses.length > 0 ? (
+                                                    <ul className="space-y-3">
+                                                        {enrolledClasses.map(c => (
+                                                            <li key={c.id} className="text-sm flex justify-between items-center bg-muted/30 p-2 rounded">
+                                                                <div><p className="font-medium">{c.name}</p><p className="text-xs text-muted-foreground">{getTeacherNames(c.teacherIds)}</p></div>
+                                                                <Badge variant="outline">{c.levelId}</Badge>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">Sin clases activas.</p>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><CalendarCheck className="h-5 w-5"/>Asistencia</CardTitle></CardHeader>
+                                            <CardContent>
+                                                {selectedStudent.attendanceHistory && selectedStudent.attendanceHistory.length > 0 ? (
+                                                    <ul className="space-y-3 max-h-[200px] overflow-y-auto">
+                                                        {selectedStudent.attendanceHistory.map((att, index) => (
+                                                            <li key={index} className="text-sm flex justify-between items-center bg-muted/30 p-2 rounded">
+                                                                <div>
+                                                                    <p className="font-medium">{getClassNameById(att.classId)}</p>
+                                                                    <p className="text-xs text-muted-foreground">{format(parseISO(att.date), 'dd/MM/yy')}</p>
+                                                                </div>
+                                                                <Badge variant={att.status === 'presente' ? 'default' : 'destructive'} className="capitalize">
+                                                                    {att.status === 'presente' ? <CalendarCheck className="mr-1 h-3 w-3" /> : <CalendarX className="mr-1 h-3 w-3" />}
+                                                                    {att.status}
+                                                                </Badge>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">Sin historial.</p>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </>
+                            )}
+                        </TabsContent>
+                    </Tabs>
                 </div>
                 <DialogFooter className="no-print">
                     {isEditing && (

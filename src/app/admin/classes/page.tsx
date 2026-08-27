@@ -255,9 +255,16 @@ export default function AdminClassesPage() {
 
     let finalData: any = {
       ...data,
-      date: data.date ? data.date.toISOString() : undefined,
       status: 'scheduled',
     };
+
+    if (finalData.type === 'recurring') {
+      finalData.date = undefined;
+    } else {
+      finalData.day = undefined;
+      // Normalizing date to midday UTC to avoid timezone offset decrement
+      finalData.date = data.date ? format(data.date, "yyyy-MM-dd'T'12:00:00.000'Z'") : undefined;
+    }
 
     if (finalData.type === 'rental') {
       finalData.teacherIds = [];
@@ -273,7 +280,14 @@ export default function AdminClassesPage() {
       const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalData) });
       if (!response.ok) throw new Error(`Failed to ${method} class`);
 
-      await fetchData(); // Refetch data from the server
+      const savedClass = await response.json();
+
+      setClasses(prev => {
+        if (editingClass) {
+          return prev.map(c => c.id === savedClass.id ? savedClass : c);
+        }
+        return [...prev, savedClass];
+      });
 
       toast({ title: `Evento ${editingClass ? 'actualizado' : 'creado'}`, description: `El evento "${data.name}" ha sido guardado.` });
     } catch (error) {
@@ -302,7 +316,8 @@ export default function AdminClassesPage() {
       const response = await fetch(`/api/classes/${classToCancel.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedClass) });
       if (!response.ok) throw new Error("Failed to cancel");
 
-      await fetchData(); // Refetch data
+      const updated = await response.json();
+      setClasses(prev => prev.map(c => c.id === updated.id ? updated : c));
 
       toast({ title: "Clase cancelada" });
     } catch (e) {
